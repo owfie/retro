@@ -16,6 +16,8 @@ import { useCallback, useRef } from "react";
 
 const SNAP_SPRING = { type: "spring" as const, stiffness: 500, damping: 35 };
 
+const MAX_SQUISH = 0.12;
+
 interface UseBlockGestureOptions {
 	block: TimeBlock;
 	siblings: TimeBlock[];
@@ -42,6 +44,8 @@ export function useBlockGesture({
 	const updateBlock = useStore((s) => s.updateBlock);
 	const updateBlocks = useStore((s) => s.updateBlocks);
 	const gestureActiveRef = useRef(false);
+	const squishRef = useRef(0);
+	const squishAnimRef = useRef<{ stop: () => void } | null>(null);
 
 	// ── Drag ──────────────────────────────────────────────
 
@@ -58,6 +62,41 @@ export function useBlockGesture({
 			let currentStart = initialStart;
 			gestureActiveRef.current = true;
 
+			squishAnimRef.current?.stop();
+
+			const setChildrenScale = (s: number) => {
+				const v = s > 0.001 ? `scaleY(${1 / (1 - s)})` : "";
+				for (const child of el.children) {
+					(child as HTMLElement).style.transform = v;
+				}
+			};
+
+			const springBackSquish = () => {
+				if (squishRef.current <= 0) return;
+				const s0 = squishRef.current;
+				squishRef.current = 0;
+				squishAnimRef.current?.stop();
+				squishAnimRef.current = animate(s0, 0, {
+					...SNAP_SPRING,
+					onUpdate: (s: number) => {
+						const abs = Math.abs(s);
+						if (abs < 0.001) {
+							el.style.transform = "";
+							el.style.transformOrigin = "";
+							setChildrenScale(0);
+						} else {
+							el.style.transform = `scaleY(${1 - abs})`;
+							setChildrenScale(abs);
+						}
+					},
+					onComplete: () => {
+						el.style.transform = "";
+						el.style.transformOrigin = "";
+						setChildrenScale(0);
+					},
+				});
+			};
+
 			const onMove = (ev: PointerEvent) => {
 				const deltaMinutes = (ev.clientY - startY) / MINUTE_HEIGHT;
 				const proposed = initialStart + deltaMinutes;
@@ -67,6 +106,23 @@ export function useBlockGesture({
 					siblings,
 				);
 				motionTop.set(currentStart * MINUTE_HEIGHT);
+
+				// Collision squish effect
+				const diff = proposed - currentStart;
+				if (Math.abs(diff) > 0.5) {
+					squishAnimRef.current?.stop();
+					const squish = Math.min(
+						MAX_SQUISH,
+						Math.abs(diff) * MINUTE_HEIGHT * 0.02,
+					);
+					squishRef.current = squish;
+					el.style.transform = `scaleY(${1 - squish})`;
+					setChildrenScale(squish);
+					el.style.transformOrigin =
+						diff > 0 ? "bottom" : "top";
+				} else if (squishRef.current > 0) {
+					springBackSquish();
+				}
 			};
 
 			const onUp = () => {
@@ -81,6 +137,7 @@ export function useBlockGesture({
 				);
 
 				animate(motionTop, clamped * MINUTE_HEIGHT, SNAP_SPRING);
+				springBackSquish();
 				// Small delay to let animation start before committing store
 				requestAnimationFrame(() => {
 					updateBlock(block.id, { startMinute: clamped });

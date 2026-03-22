@@ -2,7 +2,7 @@ import { MINUTE_HEIGHT } from "@/constants";
 import { useBlockGesture } from "@/hooks/useBlockGesture";
 import { useStore } from "@/store";
 import type { TimeBlock as TimeBlockType } from "@/types";
-import { type MotionValue, animate, motion, useMotionValue } from "motion/react";
+import { type MotionValue, animate, motion, useMotionValue, useTransform } from "motion/react";
 import { useEffect, useRef, useState } from "react";
 import styles from "./TimeBlock.module.scss";
 
@@ -44,6 +44,10 @@ export function TimeBlock({
 
 	const motionTop = useMotionValue(block.startMinute * MINUTE_HEIGHT);
 	const motionHeight = useMotionValue(block.durationMinutes * MINUTE_HEIGHT);
+
+	const BLOCK_GAP = 2;
+	const visualTop = useTransform(motionTop, (v) => v);
+	const visualHeight = useTransform(motionHeight, (v) => v - BLOCK_GAP);
 
 	// Register motion values with DayView for shared-border access
 	useEffect(() => {
@@ -93,7 +97,11 @@ export function TimeBlock({
 	}, [block.label]);
 
 	const saveLabel = () => {
-		updateBlock(block.id, { label: localLabel });
+		if (localLabel.trim() === "") {
+			deleteBlock(block.id);
+		} else {
+			updateBlock(block.id, { label: localLabel });
+		}
 		setIsEditing(false);
 	};
 
@@ -114,9 +122,10 @@ export function TimeBlock({
 		<motion.div
 			className={styles.timeBlock}
 			style={{
-				top: motionTop,
-				height: motionHeight,
-				borderColor: block.color,
+				top: visualTop,
+				height: visualHeight,
+        borderColor: block.color,
+				backgroundColor: block.color,
 			}}
 			onPointerDown={isEditing ? undefined : onBlockPointerDown}
 			onTap={() => {

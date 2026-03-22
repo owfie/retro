@@ -8,7 +8,7 @@
 
 .hourRow {
 	position: absolute;
-	left: 0;
+	left: 52px;
 	right: 0;
 	border-top: 1px solid #e0e0e0;
 }
@@ -16,10 +16,12 @@
 .hourLabel {
 	position: absolute;
 	top: -1px;
-	left: 8px;
+	right: 100%;
+	margin-right: 8px;
 	font-size: 11px;
 	color: #999;
 	line-height: 1;
 	transform: translateY(-50%);
 	user-select: none;
+	white-space: nowrap;
 }
