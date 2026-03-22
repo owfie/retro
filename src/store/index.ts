@@ -11,6 +11,7 @@ interface RetroState {
 
 	addBlock: (date: string, startMinute: number) => string;
 	updateBlock: (id: string, updates: Partial<Omit<TimeBlock, "id">>) => void;
+	updateBlocks: (updates: Array<{ id: string; changes: Partial<Omit<TimeBlock, "id">> }>) => void;
 	deleteBlock: (id: string) => void;
 	setCurrentDate: (date: string) => void;
 	getBlocksForDate: (date: string) => TimeBlock[];
@@ -46,6 +47,14 @@ export const useStore = create<RetroState>()(
 					blocks: state.blocks.map((b) =>
 						b.id === id ? { ...b, ...updates } : b,
 					),
+				})),
+
+			updateBlocks: (updates) =>
+				set((state) => ({
+					blocks: state.blocks.map((b) => {
+						const update = updates.find((u) => u.id === b.id);
+						return update ? { ...b, ...update.changes } : b;
+					}),
 				})),
 
 			deleteBlock: (id) =>

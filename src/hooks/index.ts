@@ -1,1 +1,1 @@
-// Hook barrel exports
+export { useBlockGesture } from "./useBlockGesture";
