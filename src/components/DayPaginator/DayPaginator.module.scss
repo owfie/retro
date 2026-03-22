@@ -1,0 +1,46 @@
+.paginator {
+	display: flex;
+	flex-direction: column;
+	height: 100%;
+	overflow: hidden;
+}
+
+.header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding: 12px 16px;
+	border-bottom: 1px solid #ddd;
+	flex-shrink: 0;
+}
+
+.dateLabel {
+	font-size: 16px;
+	font-weight: 600;
+	user-select: none;
+}
+
+.navButton {
+	font-size: 24px;
+	line-height: 1;
+	padding: 4px 12px;
+	color: #666;
+	border: 1px solid #ddd;
+	border-radius: 4px;
+
+	&:hover {
+		color: #333;
+		background: rgba(0, 0, 0, 0.04);
+	}
+}
+
+.viewContainer {
+	flex: 1;
+	position: relative;
+	overflow: hidden;
+}
+
+.dayWrapper {
+	position: absolute;
+	inset: 0;
+}
