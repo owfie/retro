@@ -1,20 +1,29 @@
-import { type MotionValue, motion, useMotionValue } from "motion/react";
+import {
+	type MotionValue,
+	motion,
+	useMotionValue,
+	useSpring,
+} from "motion/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useShallow } from "zustand/shallow";
 import { NowLine } from "@/components/NowLine";
 import { TimeBlock } from "@/components/TimeBlock";
 import { TimeGrid } from "@/components/TimeGrid";
 import {
+	BLOCK_GAP,
 	COLOR_PALETTE,
 	DAY_END_MINUTES,
 	DEFAULT_BLOCK_DURATION,
 	DEFAULT_VIEW_START,
+	FOLLOW_SPRING,
 	MINUTE_HEIGHT,
 	SNAP_MINUTES,
+	SNAP_PX,
 	TOTAL_DAY_HEIGHT,
 } from "@/constants";
 import { useStore } from "@/store";
 import type { TimeBlock as TimeBlockType } from "@/types";
+import { startVerticalGesture } from "@/utils/gesture";
 import { findNearestGap } from "@/utils/overlap";
 import {
 	formatDateToISO,
@@ -22,8 +31,6 @@ import {
 	pxToSnappedMinutes,
 } from "@/utils/time";
 import styles from "./DayView.module.scss";
-
-const MOVE_THRESHOLD_PX = 4;
 
 interface DayViewProps {
 	date: string;
@@ -39,11 +46,14 @@ export function DayView({ date }: DayViewProps) {
 	const [newBlockId, setNewBlockId] = useState<string | null>(null);
 	const skipNextClickRef = useRef(false);
 
-	// Draft state for drag-to-create
+	// Draft state for drag-to-create. Targets snap in minute increments; the
+	// springs render them so the draft grows smoothly, matching block gestures.
 	const [draftColor, setDraftColor] = useState<string | null>(null);
 	const [draftRange, setDraftRange] = useState("");
-	const draftTop = useMotionValue(0);
-	const draftHeight = useMotionValue(0);
+	const draftTopTarget = useMotionValue(0);
+	const draftHeightTarget = useMotionValue(0);
+	const draftTop = useSpring(draftTopTarget, FOLLOW_SPRING);
+	const draftHeight = useSpring(draftHeightTarget, FOLLOW_SPRING);
 
 	// Sort blocks by startMinute
 	const sorted = useMemo(
@@ -74,23 +84,23 @@ export function DayView({ date }: DayViewProps) {
 		return map;
 	}, [sorted]);
 
-	// Motion value registry (ref-based, no re-renders)
-	const motionRegistry = useRef(
+	// Per-block gesture target registry (ref-based, no re-renders)
+	const targetRegistry = useRef(
 		new Map<
 			string,
 			{ top: MotionValue<number>; height: MotionValue<number> }
 		>(),
 	);
 
-	const registerMotionValues = useCallback(
+	const registerTargets = useCallback(
 		(id: string, top: MotionValue<number>, height: MotionValue<number>) => {
-			motionRegistry.current.set(id, { top, height });
+			targetRegistry.current.set(id, { top, height });
 		},
 		[],
 	);
 
-	const getNeighborMotion = useCallback(
-		(id: string) => motionRegistry.current.get(id),
+	const getNeighborTargets = useCallback(
+		(id: string) => targetRegistry.current.get(id),
 		[],
 	);
 
@@ -121,15 +131,12 @@ export function DayView({ date }: DayViewProps) {
 		if (e.button !== 0) return;
 
 		const container = e.currentTarget;
-		const startClientX = e.clientX;
-		const startClientY = e.clientY;
-
 		const rect = container.getBoundingClientRect();
 		const anchorMinute = Math.max(
 			0,
 			Math.min(
 				DAY_END_MINUTES - SNAP_MINUTES,
-				pxToSnappedMinutes(startClientY - rect.top),
+				pxToSnappedMinutes(e.clientY - rect.top),
 			),
 		);
 		const anchorEnd = anchorMinute + SNAP_MINUTES;
@@ -148,8 +155,7 @@ export function DayView({ date }: DayViewProps) {
 
 		let dragStart = anchorMinute;
 		let dragEnd = anchorEnd;
-		let mode: "idle" | "creating" | "aborted" = "idle";
-		container.setPointerCapture(e.pointerId);
+		let creating = false;
 
 		const updateDraft = (clientY: number) => {
 			const y = clientY - container.getBoundingClientRect().top;
@@ -173,72 +179,52 @@ export function DayView({ date }: DayViewProps) {
 					),
 				);
 			}
-			draftTop.set(dragStart * MINUTE_HEIGHT);
-			draftHeight.set((dragEnd - dragStart) * MINUTE_HEIGHT - 2);
+			draftTopTarget.set(dragStart * MINUTE_HEIGHT);
+			draftHeightTarget.set((dragEnd - dragStart) * MINUTE_HEIGHT - BLOCK_GAP);
 			setDraftRange(formatTimeRange(dragStart, dragEnd));
 		};
 
-		const cleanup = () => {
-			container.removeEventListener("pointermove", onMove);
-			container.removeEventListener("pointerup", onUp);
-			container.removeEventListener("pointercancel", onCancel);
-		};
-
-		const onMove = (ev: PointerEvent) => {
-			if (mode === "aborted") return;
-			if (mode === "idle") {
-				const dx = Math.abs(ev.clientX - startClientX);
-				const dy = Math.abs(ev.clientY - startClientY);
-				if (dx < MOVE_THRESHOLD_PX && dy < MOVE_THRESHOLD_PX) return;
-				// Horizontal intent (day swipe) or occupied slot: leave it alone
-				if (dx > dy || !anchorFree) {
-					mode = "aborted";
-					return;
-				}
-				mode = "creating";
+		startVerticalGesture(e, {
+			// Horizontal intent (day swipe) or occupied slot: leave it alone
+			shouldBegin: (dx, dy) => dy >= dx && anchorFree,
+			onBegin: () => {
+				creating = true;
 				setDraggingBlock(true);
 				setDraftColor(COLOR_PALETTE[useStore.getState().nextColorIndex]);
-			}
-			updateDraft(ev.clientY);
-		};
-
-		const onUp = () => {
-			cleanup();
-			if (mode === "creating") {
-				setDraggingBlock(false);
-				setDraftColor(null);
-				const id = addBlock(date, dragStart, dragEnd - dragStart);
-				setNewBlockId(id);
-				return;
-			}
-			if (mode === "aborted") return;
-			// Plain click
-			if (skipNextClickRef.current) {
-				skipNextClickRef.current = false;
-				return;
-			}
-			const validStart = findNearestGap(
-				anchorMinute,
-				DEFAULT_BLOCK_DURATION,
-				sorted,
-			);
-			if (validStart != null) {
-				const id = addBlock(date, validStart);
-				setNewBlockId(id);
-			}
-		};
-
-		const onCancel = () => {
-			cleanup();
-			if (mode === "creating") {
-				setDraggingBlock(false);
-				setDraftColor(null);
-			}
-		};
-
-		container.addEventListener("pointermove", onMove);
-		container.addEventListener("pointerup", onUp);
-		container.addEventListener("pointercancel", onCancel);
+				// Start the draft at the anchor slot without animating from 0
+				draftTopTarget.jump(anchorMinute * MINUTE_HEIGHT);
+				draftHeightTarget.jump(SNAP_PX - BLOCK_GAP);
+			},
+			onUpdate: ({ clientY }) => {
+				if (creating) updateDraft(clientY);
+			},
+			onEnd: ({ cancelled }) => {
+				if (creating) {
+					setDraggingBlock(false);
+					setDraftColor(null);
+					if (!cancelled) {
+						const id = addBlock(date, dragStart, dragEnd - dragStart);
+						setNewBlockId(id);
+					}
+					return;
+				}
+				if (cancelled) return;
+				// Plain click
+				if (skipNextClickRef.current) {
+					skipNextClickRef.current = false;
+					return;
+				}
+				const validStart = findNearestGap(
+					anchorMinute,
+					DEFAULT_BLOCK_DURATION,
+					sorted,
+				);
+				if (validStart != null) {
+					const id = addBlock(date, validStart);
+					setNewBlockId(id);
+				}
+			},
+		});
 	};
 
 	return (
@@ -260,6 +246,9 @@ export function DayView({ date }: DayViewProps) {
 				{draftColor && (
 					<motion.div
 						className={styles.draftBlock}
+						initial={{ opacity: 0 }}
+						animate={{ opacity: 1 }}
+						transition={{ duration: 0.12 }}
 						style={{
 							top: draftTop,
 							height: draftHeight,
@@ -282,8 +271,8 @@ export function DayView({ date }: DayViewProps) {
 							neighborBelow={adj?.below ?? null}
 							siblings={sorted.filter((b) => b.id !== block.id)}
 							onEditEnd={handleEditEnd}
-							registerMotionValues={registerMotionValues}
-							getNeighborMotion={getNeighborMotion}
+							registerTargets={registerTargets}
+							getNeighborTargets={getNeighborTargets}
 						/>
 					);
 				})}

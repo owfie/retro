@@ -1,20 +1,25 @@
 import {
-	animate,
 	type MotionValue,
 	motion,
 	useMotionValue,
 	useMotionValueEvent,
+	useSpring,
 	useTransform,
 } from "motion/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { COLOR_PALETTE, MINUTE_HEIGHT } from "@/constants";
+import {
+	BLOCK_GAP,
+	COLOR_PALETTE,
+	FOLLOW_SPRING,
+	LIFT_SPRING,
+	MINUTE_HEIGHT,
+	SQUISH_SPRING,
+} from "@/constants";
 import { useBlockGesture } from "@/hooks/useBlockGesture";
 import { useStore } from "@/store";
 import type { TimeBlock as TimeBlockType } from "@/types";
 import { formatTimeRange } from "@/utils/time";
 import styles from "./TimeBlock.module.scss";
-
-const SNAP_SPRING = { type: "spring" as const, stiffness: 500, damping: 35 };
 
 interface TimeBlockProps {
 	block: TimeBlockType;
@@ -24,12 +29,12 @@ interface TimeBlockProps {
 	neighborAbove: TimeBlockType | null;
 	neighborBelow: TimeBlockType | null;
 	siblings: TimeBlockType[];
-	registerMotionValues: (
+	registerTargets: (
 		id: string,
 		top: MotionValue<number>,
 		height: MotionValue<number>,
 	) => void;
-	getNeighborMotion: (
+	getNeighborTargets: (
 		id: string,
 	) => { top: MotionValue<number>; height: MotionValue<number> } | undefined;
 }
@@ -42,8 +47,8 @@ export function TimeBlock({
 	neighborAbove,
 	neighborBelow,
 	siblings,
-	registerMotionValues,
-	getNeighborMotion,
+	registerTargets,
+	getNeighborTargets,
 }: TimeBlockProps) {
 	const updateBlock = useStore((s) => s.updateBlock);
 	const deleteBlock = useStore((s) => s.deleteBlock);
@@ -53,25 +58,27 @@ export function TimeBlock({
 	const inputRef = useRef<HTMLInputElement>(null);
 	const escapedRef = useRef(false);
 
-	const motionTop = useMotionValue(block.startMinute * MINUTE_HEIGHT);
-	const motionHeight = useMotionValue(block.durationMinutes * MINUTE_HEIGHT);
-
-	// Gesture feedback motion values
-	const motionLift = useMotionValue(0);
-	const motionSquish = useMotionValue(0);
-	const offsetTop = useMotionValue(0);
-	const offsetHeight = useMotionValue(0);
+	// Gesture handlers set these targets synchronously; the spring followers
+	// below render them, so on-screen motion stays continuous even when a
+	// target jumps across a snap detent.
+	const targetTop = useMotionValue(block.startMinute * MINUTE_HEIGHT);
+	const targetHeight = useMotionValue(block.durationMinutes * MINUTE_HEIGHT);
+	const liftTarget = useMotionValue(0);
+	const squishTarget = useMotionValue(0);
 	const timeLabel = useMotionValue("");
+
+	const top = useSpring(targetTop, FOLLOW_SPRING);
+	const height = useSpring(targetHeight, FOLLOW_SPRING);
+	const lift = useSpring(liftTarget, LIFT_SPRING);
+	const squish = useSpring(squishTarget, SQUISH_SPRING);
 
 	const visuals = useMemo(
 		() => ({
-			lift: motionLift,
-			squish: motionSquish,
-			offsetTop,
-			offsetHeight,
+			lift: liftTarget,
+			squish: squishTarget,
 			timeLabel,
 		}),
-		[motionLift, motionSquish, offsetTop, offsetHeight, timeLabel],
+		[liftTarget, squishTarget, timeLabel],
 	);
 
 	// Live badge text + visibility during gestures (updates only on snap changes)
@@ -83,66 +90,49 @@ export function TimeBlock({
 		[],
 	);
 
-	const BLOCK_GAP = 2;
-	// Detent position + slight lean toward the pointer during gestures
-	const visualTop = useTransform(
-		[motionTop, offsetTop],
-		([top, lean]: number[]) => top + lean,
-	);
-	const visualHeight = useTransform(
-		[motionHeight, offsetHeight],
-		([height, lean]: number[]) => height + lean - BLOCK_GAP,
-	);
+	const visualHeight = useTransform(height, (h) => h - BLOCK_GAP);
 
 	// Lift: subtle scale + raised z-index while dragging
-	const scale = useTransform(motionLift, (v) => 1 + v * 0.02);
-	const zIndex = useTransform(motionLift, (v) => (v > 0.02 ? 3 : 1));
+	const scale = useTransform(lift, (v) => 1 + v * 0.02);
+	const zIndex = useTransform(lift, (v) => (v > 0.02 ? 3 : 1));
 
 	// Squish: signed value, positive squishes from the bottom edge
-	const scaleY = useTransform(motionSquish, (s) => 1 - Math.abs(s));
-	const contentScaleY = useTransform(motionSquish, (s) =>
+	const scaleY = useTransform(squish, (s) => 1 - Math.abs(s));
+	const contentScaleY = useTransform(squish, (s) =>
 		Math.abs(s) > 0.001 ? 1 / (1 - Math.abs(s)) : 1,
 	);
-	const originY = useTransform(motionSquish, (s) =>
+	const originY = useTransform(squish, (s) =>
 		s > 0.001 ? 1 : s < -0.001 ? 0 : 0.5,
 	);
 
-	// Register motion values with DayView for shared-border access
+	// Register targets with DayView for shared-border access
 	useEffect(() => {
-		registerMotionValues(block.id, motionTop, motionHeight);
-	}, [block.id, motionTop, motionHeight, registerMotionValues]);
+		registerTargets(block.id, targetTop, targetHeight);
+	}, [block.id, targetTop, targetHeight, registerTargets]);
 
 	const {
 		onBlockPointerDown,
 		onTopHandlePointerDown,
 		onBottomHandlePointerDown,
-		gestureActiveRef,
 	} = useBlockGesture({
 		block,
 		siblings,
 		neighborAbove,
 		neighborBelow,
-		motionTop,
-		motionHeight,
+		targetTop,
+		targetHeight,
 		visuals,
 		onGestureVisualChange,
-		getNeighborMotion,
+		getNeighborTargets,
 		isEditing,
 	});
 
-	// Sync motion values to store (guarded during gestures)
+	// Follow store changes. After a gesture commit this is a no-op, since the
+	// targets already hold the committed values.
 	useEffect(() => {
-		if (!gestureActiveRef.current) {
-			animate(motionTop, block.startMinute * MINUTE_HEIGHT, SNAP_SPRING);
-			animate(motionHeight, block.durationMinutes * MINUTE_HEIGHT, SNAP_SPRING);
-		}
-	}, [
-		block.startMinute,
-		block.durationMinutes,
-		motionTop,
-		motionHeight,
-		gestureActiveRef,
-	]);
+		targetTop.set(block.startMinute * MINUTE_HEIGHT);
+		targetHeight.set(block.durationMinutes * MINUTE_HEIGHT);
+	}, [block.startMinute, block.durationMinutes, targetTop, targetHeight]);
 
 	// Auto-focus newly created blocks
 	useEffect(() => {
@@ -197,7 +187,7 @@ export function TimeBlock({
 		<motion.div
 			className={styles.timeBlock}
 			style={{
-				top: visualTop,
+				top,
 				height: visualHeight,
 				scale,
 				scaleY,
