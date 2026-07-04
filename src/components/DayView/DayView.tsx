@@ -11,7 +11,6 @@ import { TimeBlock } from "@/components/TimeBlock";
 import { TimeGrid } from "@/components/TimeGrid";
 import {
 	BLOCK_GAP,
-	COLOR_PALETTE,
 	DAY_END_MINUTES,
 	DEFAULT_BLOCK_DURATION,
 	DEFAULT_VIEW_START,
@@ -19,8 +18,10 @@ import {
 	MINUTE_HEIGHT,
 	SNAP_MINUTES,
 	SNAP_PX,
+	type ThemeSwatch,
 	TOTAL_DAY_HEIGHT,
 } from "@/constants";
+import { useThemePalette } from "@/hooks/useThemePalette";
 import { useStore } from "@/store";
 import type { TimeBlock as TimeBlockType } from "@/types";
 import { startVerticalGesture } from "@/utils/gesture";
@@ -46,9 +47,11 @@ export function DayView({ date }: DayViewProps) {
 	const [newBlockId, setNewBlockId] = useState<string | null>(null);
 	const skipNextClickRef = useRef(false);
 
+	const palette = useThemePalette();
+
 	// Draft state for drag-to-create. Targets snap in minute increments; the
 	// springs render them so the draft grows smoothly, matching block gestures.
-	const [draftColor, setDraftColor] = useState<string | null>(null);
+	const [draftSwatch, setDraftSwatch] = useState<ThemeSwatch | null>(null);
 	const [draftRange, setDraftRange] = useState("");
 	const draftTopTarget = useMotionValue(0);
 	const draftHeightTarget = useMotionValue(0);
@@ -190,7 +193,7 @@ export function DayView({ date }: DayViewProps) {
 			onBegin: () => {
 				creating = true;
 				setDraggingBlock(true);
-				setDraftColor(COLOR_PALETTE[useStore.getState().nextColorIndex]);
+				setDraftSwatch(palette[useStore.getState().nextColorIndex]);
 				// Start the draft at the anchor slot without animating from 0
 				draftTopTarget.jump(anchorMinute * MINUTE_HEIGHT);
 				draftHeightTarget.jump(SNAP_PX - BLOCK_GAP);
@@ -201,7 +204,7 @@ export function DayView({ date }: DayViewProps) {
 			onEnd: ({ cancelled }) => {
 				if (creating) {
 					setDraggingBlock(false);
-					setDraftColor(null);
+					setDraftSwatch(null);
 					if (!cancelled) {
 						const id = addBlock(date, dragStart, dragEnd - dragStart);
 						setNewBlockId(id);
@@ -229,7 +232,7 @@ export function DayView({ date }: DayViewProps) {
 
 	return (
 		<div className={styles.dayView} ref={scrollRef} data-scroll-container>
-			{sorted.length === 0 && !draftColor && (
+			{sorted.length === 0 && !draftSwatch && (
 				<div className={styles.emptyHint}>
 					<span className={styles.emptyHintText}>
 						Click anywhere to add a block · drag to size it
@@ -243,7 +246,7 @@ export function DayView({ date }: DayViewProps) {
 			>
 				<TimeGrid />
 				{isToday && <NowLine />}
-				{draftColor && (
+				{draftSwatch && (
 					<motion.div
 						className={styles.draftBlock}
 						initial={{ opacity: 0 }}
@@ -252,8 +255,9 @@ export function DayView({ date }: DayViewProps) {
 						style={{
 							top: draftTop,
 							height: draftHeight,
-							borderColor: draftColor,
-							backgroundColor: draftColor,
+							borderColor: draftSwatch.bg,
+							backgroundColor: draftSwatch.bg,
+							color: draftSwatch.text,
 						}}
 					>
 						<span className={styles.draftLabel}>{draftRange}</span>

@@ -31,13 +31,49 @@ export const SQUISH_PER_PX = 0.02;
 /** Visual gap between adjacent blocks (px). */
 export const BLOCK_GAP = 2;
 
-export const COLOR_PALETTE = [
-	"#d6c9b8",
-	"#b25f3e",
-	"#8c4a32",
-	"#caa958",
-	"#777745",
-	"#3d3e1e",
-	"#84a7c3",
-	"#3f627e",
-] as const;
+// ── Themes ───────────────────────────────────────────────────
+// Blocks store a colorIndex, so switching themes recolors every block by
+// remapping indices into the active theme's swatches.
+
+export interface ThemeSwatch {
+	bg: string;
+	text: string;
+}
+
+export interface Theme {
+	name: string;
+	swatches: readonly ThemeSwatch[];
+}
+
+export const PALETTE_SIZE = 8;
+
+export const THEMES = {
+	nightLight: {
+		name: "Night Light",
+		swatches: [
+			{ bg: "#f8d8ac", text: "#8a5a24" },
+			{ bg: "#d6d0f5", text: "#4534a8" },
+			{ bg: "#e4e4e4", text: "#7d7d7d" },
+			{ bg: "#c9dff5", text: "#2e5d8a" },
+			{ bg: "#b9c4f2", text: "#33418f" },
+			{ bg: "#cdeedd", text: "#2e7d54" },
+			{ bg: "#f5d3e0", text: "#a04468" },
+			{ bg: "#f3e7bd", text: "#8a7524" },
+		],
+	},
+	autumn: {
+		name: "Autumn",
+		swatches: [
+			{ bg: "#d6c9b8", text: "#ffffff" },
+			{ bg: "#b25f3e", text: "#ffffff" },
+			{ bg: "#8c4a32", text: "#ffffff" },
+			{ bg: "#caa958", text: "#ffffff" },
+			{ bg: "#777745", text: "#ffffff" },
+			{ bg: "#3d3e1e", text: "#ffffff" },
+			{ bg: "#84a7c3", text: "#ffffff" },
+			{ bg: "#3f627e", text: "#ffffff" },
+		],
+	},
+} as const satisfies Record<string, Theme>;
+
+export type ThemeId = keyof typeof THEMES;

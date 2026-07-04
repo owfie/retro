@@ -13,6 +13,11 @@
 	border-top: 1px solid #e0e0e0;
 }
 
+// Hour labels stay visible when gridlines are toggled off
+.timeGrid[data-gridlines="false"] .hourRow {
+	border-top-color: transparent;
+}
+
 .hourLabel {
 	position: absolute;
 	top: -1px;

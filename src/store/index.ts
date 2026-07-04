@@ -1,6 +1,11 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import { COLOR_PALETTE, DEFAULT_BLOCK_DURATION } from "@/constants";
+import {
+	DEFAULT_BLOCK_DURATION,
+	PALETTE_SIZE,
+	THEMES,
+	type ThemeId,
+} from "@/constants";
 import type { TimeBlock } from "@/types";
 import { formatDateToISO } from "@/utils/time";
 
@@ -12,7 +17,11 @@ interface RetroState {
 	nextColorIndex: number;
 	isDraggingBlock: boolean;
 	history: TimeBlock[][];
+	theme: ThemeId;
+	showGridlines: boolean;
 
+	setTheme: (theme: ThemeId) => void;
+	setShowGridlines: (show: boolean) => void;
 	setDraggingBlock: (dragging: boolean) => void;
 	addBlock: (
 		date: string,
@@ -42,6 +51,12 @@ export const useStore = create<RetroState>()(
 			nextColorIndex: 0,
 			isDraggingBlock: false,
 			history: [],
+			theme: "nightLight",
+			showGridlines: true,
+
+			setTheme: (theme) => set({ theme }),
+
+			setShowGridlines: (show) => set({ showGridlines: show }),
 
 			setDraggingBlock: (dragging) => set({ isDraggingBlock: dragging }),
 
@@ -62,7 +77,7 @@ export const useStore = create<RetroState>()(
 				set((state) => ({
 					history: pushHistory(state),
 					blocks: [...state.blocks, block],
-					nextColorIndex: (state.nextColorIndex + 1) % COLOR_PALETTE.length,
+					nextColorIndex: (state.nextColorIndex + 1) % PALETTE_SIZE,
 				}));
 				return block.id;
 			},
@@ -114,13 +129,19 @@ export const useStore = create<RetroState>()(
 		}),
 		{
 			name: "retro-storage",
-			version: 1,
+			version: 2,
 			partialize: (state) => ({
 				blocks: state.blocks,
 				nextColorIndex: state.nextColorIndex,
+				theme: state.theme,
+				showGridlines: state.showGridlines,
 			}),
 			migrate: (persisted: unknown, version: number) => {
 				if (version === 0) {
+					// v0 stored raw hex colors from what is now the autumn palette
+					const legacyPalette: readonly string[] = THEMES.autumn.swatches.map(
+						(s) => s.bg,
+					);
 					const state = persisted as {
 						blocks?: Array<Record<string, unknown>>;
 						nextColorIndex?: number;
@@ -128,15 +149,14 @@ export const useStore = create<RetroState>()(
 					const blocks = (state.blocks ?? []).map((b) => {
 						if ("color" in b && !("colorIndex" in b)) {
 							const { color, ...rest } = b;
-							const idx = COLOR_PALETTE.indexOf(
-								color as (typeof COLOR_PALETTE)[number],
-							);
+							const idx = legacyPalette.indexOf(color as string);
 							return { ...rest, colorIndex: idx >= 0 ? idx : 0 };
 						}
 						return b;
 					});
 					return { ...state, blocks };
 				}
+				// v1 -> v2 just adds theme/showGridlines; defaults fill in via merge
 				return persisted;
 			},
 		},

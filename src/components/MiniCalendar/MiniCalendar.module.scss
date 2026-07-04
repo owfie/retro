@@ -1,0 +1,91 @@
+.calendar {
+	user-select: none;
+}
+
+.monthPicker {
+	display: flex;
+	align-items: center;
+	gap: 2px;
+	margin-bottom: 22px;
+}
+
+.chevron {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 26px;
+	height: 26px;
+	border-radius: 8px;
+	color: #c3beb6;
+	transition: background 0.12s, color 0.12s;
+
+	&:hover {
+		background: #f1efec;
+		color: #6f6a63;
+	}
+}
+
+.month {
+	padding: 5px 12px;
+	border-radius: 9px;
+	font-size: 13px;
+	font-weight: 500;
+	color: #b3aea6;
+	transition: background 0.12s, color 0.12s;
+
+	&:hover {
+		background: #f1efec;
+		color: #6f6a63;
+	}
+
+	&[data-selected="true"] {
+		background: #26221e;
+		color: #fff;
+		font-weight: 600;
+
+		&:hover {
+			background: #26221e;
+			color: #fff;
+		}
+	}
+}
+
+.grid {
+	display: grid;
+	grid-template-columns: repeat(7, 1fr);
+	row-gap: 12px;
+}
+
+.dayCell {
+	width: 26px;
+	height: 26px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	justify-self: center;
+	border-radius: 8px;
+	font-size: 13px;
+	color: #cbc6bf; // days without entries read as faded
+	transition: background 0.12s, color 0.12s;
+
+	&[data-has-entries="true"] {
+		background: #f1efec;
+		color: #8d8478;
+	}
+
+	&:hover {
+		background: #e9e7e3;
+		color: #6f6a63;
+	}
+
+	&[data-selected="true"] {
+		background: #26221e;
+		color: #fff;
+		font-weight: 500;
+
+		&:hover {
+			background: #26221e;
+			color: #fff;
+		}
+	}
+}

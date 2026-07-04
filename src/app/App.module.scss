@@ -1,6 +1,30 @@
 .app {
-	max-width: 480px;
-	margin: 0 auto;
+	display: flex;
+	height: 100%;
+	overflow: hidden;
+}
+
+.sidebar {
+	width: 280px;
+	flex-shrink: 0;
+	display: flex;
+	flex-direction: column;
+	justify-content: space-between;
+	padding: 24px 20px;
+	overflow-y: auto;
+}
+
+.main {
+	flex: 1;
+	min-width: 0;
+	display: flex;
+	justify-content: center;
+	overflow: hidden;
+}
+
+.dayPane {
+	width: 100%;
+	max-width: 520px;
 	height: 100%;
 	position: relative;
 	overflow: hidden;

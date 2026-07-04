@@ -20,8 +20,6 @@ export function NowLine() {
 			className={styles.nowLine}
 			style={{ top: minutes * MINUTE_HEIGHT }}
 			aria-hidden
-		>
-			<div className={styles.dot} />
-		</div>
+		/>
 	);
 }

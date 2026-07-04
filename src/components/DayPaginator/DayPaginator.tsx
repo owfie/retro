@@ -1,6 +1,7 @@
-import { addDays, format } from "date-fns";
+import { addDays } from "date-fns";
 import { AnimatePresence, motion } from "motion/react";
 import { useRef } from "react";
+import { DayStrip } from "@/components/DayStrip";
 import { DayView } from "@/components/DayView";
 import { useStore } from "@/store";
 import { formatDateToISO, parseLocalDate } from "@/utils/time";
@@ -30,52 +31,34 @@ export function DayPaginator() {
 		setCurrentDate(formatDateToISO(newDate));
 	};
 
-	const today = formatDateToISO(new Date());
-	const isToday = currentDate === today;
-
-	const goToToday = () => {
-		if (isToday) return;
-		dirRef.current = currentDate < today ? 1 : -1;
-		setCurrentDate(today);
+	const goToDate = (iso: string) => {
+		if (iso === currentDate) return;
+		dirRef.current = iso > currentDate ? 1 : -1;
+		setCurrentDate(iso);
 	};
 
-	const dateLabel = format(parseLocalDate(currentDate), "EEEE, MMM d");
+	const today = formatDateToISO(new Date());
+	const isToday = currentDate === today;
 
 	return (
 		<div className={styles.paginator}>
 			<div className={styles.header}>
-				<button
-					type="button"
-					className={styles.navButton}
-					onClick={() => navigate(-1)}
-				>
-					&#8249;
-				</button>
-				<div className={styles.titleGroup}>
-					<span className={styles.dateLabel}>{dateLabel}</span>
-					<AnimatePresence>
-						{!isToday && (
-							<motion.button
-								type="button"
-								className={styles.todayButton}
-								initial={{ opacity: 0, scale: 0.9 }}
-								animate={{ opacity: 1, scale: 1 }}
-								exit={{ opacity: 0, scale: 0.9 }}
-								transition={{ duration: 0.15 }}
-								onClick={goToToday}
-							>
-								Today
-							</motion.button>
-						)}
-					</AnimatePresence>
-				</div>
-				<button
-					type="button"
-					className={styles.navButton}
-					onClick={() => navigate(1)}
-				>
-					&#8250;
-				</button>
+				<DayStrip currentDate={currentDate} onSelect={goToDate} />
+				<AnimatePresence>
+					{!isToday && (
+						<motion.button
+							type="button"
+							className={styles.todayButton}
+							initial={{ opacity: 0, scale: 0.9, y: "-50%" }}
+							animate={{ opacity: 1, scale: 1, y: "-50%" }}
+							exit={{ opacity: 0, scale: 0.9, y: "-50%" }}
+							transition={{ duration: 0.15 }}
+							onClick={() => goToDate(today)}
+						>
+							Today
+						</motion.button>
+					)}
+				</AnimatePresence>
 			</div>
 			<div className={styles.viewContainer}>
 				<AnimatePresence mode="popLayout" custom={dirRef.current}>

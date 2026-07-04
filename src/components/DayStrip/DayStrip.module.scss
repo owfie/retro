@@ -1,0 +1,49 @@
+.strip {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 2px;
+}
+
+.chevron {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 28px;
+	height: 28px;
+	border-radius: 9px;
+	color: #c3beb6;
+	transition: background 0.12s, color 0.12s;
+
+	&:hover {
+		background: #f1efec;
+		color: #6f6a63;
+	}
+}
+
+.day {
+	padding: 6px 13px;
+	border-radius: 10px;
+	font-size: 14px;
+	font-weight: 500;
+	color: #b3aea6;
+	white-space: nowrap;
+	user-select: none;
+	transition: background 0.12s, color 0.12s;
+
+	&:hover {
+		background: #f1efec;
+		color: #6f6a63;
+	}
+
+	&[data-selected="true"] {
+		background: #26221e;
+		color: #fff;
+		font-weight: 600;
+
+		&:hover {
+			background: #26221e;
+			color: #fff;
+		}
+	}
+}

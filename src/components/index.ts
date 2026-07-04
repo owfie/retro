@@ -1,5 +1,9 @@
+export { Chevron } from "./Chevron";
 export { DayPaginator } from "./DayPaginator";
+export { DayStrip } from "./DayStrip";
 export { DayView } from "./DayView";
+export { MiniCalendar } from "./MiniCalendar";
 export { NowLine } from "./NowLine";
+export { SettingsPanel } from "./SettingsPanel";
 export { TimeBlock } from "./TimeBlock";
 export { TimeGrid } from "./TimeGrid";

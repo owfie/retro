@@ -9,13 +9,13 @@ import {
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
 	BLOCK_GAP,
-	COLOR_PALETTE,
 	FOLLOW_SPRING,
 	LIFT_SPRING,
 	MINUTE_HEIGHT,
 	SQUISH_SPRING,
 } from "@/constants";
 import { useBlockGesture } from "@/hooks/useBlockGesture";
+import { useThemePalette } from "@/hooks/useThemePalette";
 import { useStore } from "@/store";
 import type { TimeBlock as TimeBlockType } from "@/types";
 import { formatTimeRange } from "@/utils/time";
@@ -177,7 +177,8 @@ export function TimeBlock({
 		}
 	};
 
-	const color = COLOR_PALETTE[block.colorIndex];
+	const palette = useThemePalette();
+	const swatch = palette[block.colorIndex % palette.length];
 	const staticRange = formatTimeRange(
 		block.startMinute,
 		block.startMinute + block.durationMinutes,
@@ -193,8 +194,9 @@ export function TimeBlock({
 				scaleY,
 				originY,
 				zIndex,
-				borderColor: color,
-				backgroundColor: color,
+				borderColor: swatch.bg,
+				backgroundColor: swatch.bg,
+				color: swatch.text,
 			}}
 			onPointerDown={isEditing ? undefined : onBlockPointerDown}
 			onTap={() => {

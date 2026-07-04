@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { DayPaginator } from "@/components";
+import { DayPaginator, MiniCalendar, SettingsPanel } from "@/components";
 import { useStore } from "@/store";
 import styles from "./App.module.scss";
 
@@ -27,7 +27,15 @@ export function App() {
 
 	return (
 		<div className={styles.app}>
-			<DayPaginator />
+			<aside className={styles.sidebar}>
+				<MiniCalendar />
+				<SettingsPanel />
+			</aside>
+			<main className={styles.main}>
+				<div className={styles.dayPane}>
+					<DayPaginator />
+				</div>
+			</main>
 		</div>
 	);
 }
