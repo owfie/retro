@@ -1,5 +1,5 @@
-import { HOUR_HEIGHT, TOTAL_DAY_HEIGHT } from "@/constants";
 import { format, setHours, startOfDay } from "date-fns";
+import { HOUR_HEIGHT, TOTAL_DAY_HEIGHT } from "@/constants";
 import styles from "./TimeGrid.module.scss";
 
 const HOURS = Array.from({ length: 24 }, (_, i) => i);

@@ -33,7 +33,10 @@ export function constrainMove(
 	const gaps: Array<{ start: number; end: number }> = [];
 
 	if (siblings.length === 0) {
-		return Math.max(0, Math.min(DAY_END_MINUTES - blockDuration, proposedStart));
+		return Math.max(
+			0,
+			Math.min(DAY_END_MINUTES - blockDuration, proposedStart),
+		);
 	}
 
 	// Gap before first block
@@ -60,7 +63,10 @@ export function constrainMove(
 
 	// No valid gaps — return clamped to day boundaries (shouldn't happen in practice)
 	if (gaps.length === 0) {
-		return Math.max(0, Math.min(DAY_END_MINUTES - blockDuration, proposedStart));
+		return Math.max(
+			0,
+			Math.min(DAY_END_MINUTES - blockDuration, proposedStart),
+		);
 	}
 
 	// Find the best placement: closest to proposedStart within any gap
@@ -119,7 +125,10 @@ export function constrainResizeTop(
 		}
 	}
 
-	const constrainedStart = Math.max(minStart, Math.min(proposedStart, blockEnd - SNAP_MINUTES));
+	const constrainedStart = Math.max(
+		minStart,
+		Math.min(proposedStart, blockEnd - SNAP_MINUTES),
+	);
 	return {
 		startMinute: constrainedStart,
 		durationMinutes: blockEnd - constrainedStart,
@@ -135,7 +144,12 @@ export function findNearestGap(
 	// Try the desired position first
 	const desiredEnd = desiredStart + duration;
 	const hasOverlap = siblings.some((s) =>
-		rangesOverlap(desiredStart, desiredEnd, s.startMinute, s.startMinute + s.durationMinutes),
+		rangesOverlap(
+			desiredStart,
+			desiredEnd,
+			s.startMinute,
+			s.startMinute + s.durationMinutes,
+		),
 	);
 
 	if (!hasOverlap && desiredStart >= 0 && desiredEnd <= DAY_END_MINUTES) {
@@ -153,7 +167,10 @@ export function findNearestGap(
 
 	// Gap at start of day
 	if (siblings[0].startMinute >= duration) {
-		const gapStart = Math.max(0, Math.min(desiredStart, siblings[0].startMinute - duration));
+		const gapStart = Math.max(
+			0,
+			Math.min(desiredStart, siblings[0].startMinute - duration),
+		);
 		const dist = Math.abs(gapStart - desiredStart);
 		if (dist < bestDistance) {
 			bestDistance = dist;
@@ -166,7 +183,10 @@ export function findNearestGap(
 		const gapStart = siblings[i].startMinute + siblings[i].durationMinutes;
 		const gapEnd = siblings[i + 1].startMinute;
 		if (gapEnd - gapStart >= duration) {
-			const candidate = Math.max(gapStart, Math.min(desiredStart, gapEnd - duration));
+			const candidate = Math.max(
+				gapStart,
+				Math.min(desiredStart, gapEnd - duration),
+			);
 			const dist = Math.abs(candidate - desiredStart);
 			if (dist < bestDistance) {
 				bestDistance = dist;
@@ -176,9 +196,14 @@ export function findNearestGap(
 	}
 
 	// Gap after last block
-	const lastEnd = siblings[siblings.length - 1].startMinute + siblings[siblings.length - 1].durationMinutes;
+	const lastEnd =
+		siblings[siblings.length - 1].startMinute +
+		siblings[siblings.length - 1].durationMinutes;
 	if (DAY_END_MINUTES - lastEnd >= duration) {
-		const candidate = Math.max(lastEnd, Math.min(desiredStart, DAY_END_MINUTES - duration));
+		const candidate = Math.max(
+			lastEnd,
+			Math.min(desiredStart, DAY_END_MINUTES - duration),
+		);
 		const dist = Math.abs(candidate - desiredStart);
 		if (dist < bestDistance) {
 			bestStart = candidate;

@@ -1,0 +1,19 @@
+.nowLine {
+	position: absolute;
+	left: 52px;
+	right: 0;
+	height: 0;
+	border-top: 2px solid #d03d2e;
+	z-index: 2;
+	pointer-events: none;
+}
+
+.dot {
+	position: absolute;
+	left: -4px;
+	top: -5px;
+	width: 8px;
+	height: 8px;
+	border-radius: 50%;
+	background: #d03d2e;
+}

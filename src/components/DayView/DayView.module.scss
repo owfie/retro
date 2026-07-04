@@ -9,3 +9,42 @@
 	position: relative;
 	min-height: 100%;
 }
+
+.draftBlock {
+	position: absolute;
+	left: 52px;
+	right: 12px;
+	border: 2px solid;
+	border-radius: 8px;
+	color: white;
+	pointer-events: none;
+	z-index: 2;
+	display: flex;
+	align-items: flex-start;
+	padding: 4px 6px;
+}
+
+.draftLabel {
+	font-size: 12px;
+	font-variant-numeric: tabular-nums;
+	user-select: none;
+}
+
+.emptyHint {
+	position: sticky;
+	top: 45%;
+	height: 0;
+	display: flex;
+	justify-content: center;
+	pointer-events: none;
+	z-index: 4;
+}
+
+.emptyHintText {
+	font-size: 13px;
+	color: #8d8478;
+	background: rgba(255, 255, 255, 0.75);
+	padding: 6px 14px;
+	border-radius: 999px;
+	white-space: nowrap;
+}

@@ -29,6 +29,27 @@ export function clampMinutes(
 	return Math.max(min, Math.min(max, minutes));
 }
 
+export function formatMinutesLabel(
+	totalMinutes: number,
+	includePeriod: boolean,
+): string {
+	const h24 = Math.floor(totalMinutes / 60) % 24;
+	const m = Math.round(totalMinutes % 60);
+	const period = h24 < 12 ? "AM" : "PM";
+	const h12 = h24 % 12 === 0 ? 12 : h24 % 12;
+	const base = m === 0 ? `${h12}` : `${h12}:${String(m).padStart(2, "0")}`;
+	return includePeriod ? `${base} ${period}` : base;
+}
+
+export function formatTimeRange(
+	startMinute: number,
+	endMinute: number,
+): string {
+	const startPeriod = Math.floor(startMinute / 60) % 24 < 12 ? "AM" : "PM";
+	const endPeriod = Math.floor(endMinute / 60) % 24 < 12 ? "AM" : "PM";
+	return `${formatMinutesLabel(startMinute, startPeriod !== endPeriod)} – ${formatMinutesLabel(endMinute, true)}`;
+}
+
 export function parseLocalDate(iso: string): Date {
 	const [y, m, d] = iso.split("-").map(Number);
 	return new Date(y, m - 1, d);

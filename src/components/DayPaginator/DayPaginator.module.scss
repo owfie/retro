@@ -14,10 +14,35 @@
 	flex-shrink: 0;
 }
 
+.titleGroup {
+	position: relative;
+	display: flex;
+	align-items: center;
+}
+
 .dateLabel {
 	font-size: 16px;
 	font-weight: 600;
 	user-select: none;
+}
+
+.todayButton {
+	position: absolute;
+	left: 100%;
+	margin-left: 10px;
+	font-size: 12px;
+	font-weight: 600;
+	padding: 3px 10px;
+	border-radius: 999px;
+	border: 1px solid #ddd;
+	color: #666;
+	background: #fff;
+	white-space: nowrap;
+
+	&:hover {
+		color: #333;
+		background: rgba(0, 0, 0, 0.04);
+	}
 }
 
 .navButton {

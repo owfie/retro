@@ -1,9 +1,17 @@
+import {
+	animate,
+	type MotionValue,
+	motion,
+	useMotionValue,
+	useMotionValueEvent,
+	useTransform,
+} from "motion/react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { COLOR_PALETTE, MINUTE_HEIGHT } from "@/constants";
 import { useBlockGesture } from "@/hooks/useBlockGesture";
 import { useStore } from "@/store";
 import type { TimeBlock as TimeBlockType } from "@/types";
-import { type MotionValue, animate, motion, useMotionValue, useTransform } from "motion/react";
-import { useEffect, useRef, useState } from "react";
+import { formatTimeRange } from "@/utils/time";
 import styles from "./TimeBlock.module.scss";
 
 const SNAP_SPRING = { type: "spring" as const, stiffness: 500, damping: 35 };
@@ -48,9 +56,56 @@ export function TimeBlock({
 	const motionTop = useMotionValue(block.startMinute * MINUTE_HEIGHT);
 	const motionHeight = useMotionValue(block.durationMinutes * MINUTE_HEIGHT);
 
+	// Gesture feedback motion values
+	const motionLift = useMotionValue(0);
+	const motionSquish = useMotionValue(0);
+	const offsetTop = useMotionValue(0);
+	const offsetHeight = useMotionValue(0);
+	const timeLabel = useMotionValue("");
+
+	const visuals = useMemo(
+		() => ({
+			lift: motionLift,
+			squish: motionSquish,
+			offsetTop,
+			offsetHeight,
+			timeLabel,
+		}),
+		[motionLift, motionSquish, offsetTop, offsetHeight, timeLabel],
+	);
+
+	// Live badge text + visibility during gestures (updates only on snap changes)
+	const [gestureVisual, setGestureVisual] = useState(false);
+	const [liveRange, setLiveRange] = useState("");
+	useMotionValueEvent(timeLabel, "change", (v) => setLiveRange(v));
+	const onGestureVisualChange = useCallback(
+		(active: boolean) => setGestureVisual(active),
+		[],
+	);
+
 	const BLOCK_GAP = 2;
-	const visualTop = useTransform(motionTop, (v) => v);
-	const visualHeight = useTransform(motionHeight, (v) => v - BLOCK_GAP);
+	// Detent position + slight lean toward the pointer during gestures
+	const visualTop = useTransform(
+		[motionTop, offsetTop],
+		([top, lean]: number[]) => top + lean,
+	);
+	const visualHeight = useTransform(
+		[motionHeight, offsetHeight],
+		([height, lean]: number[]) => height + lean - BLOCK_GAP,
+	);
+
+	// Lift: subtle scale + raised z-index while dragging
+	const scale = useTransform(motionLift, (v) => 1 + v * 0.02);
+	const zIndex = useTransform(motionLift, (v) => (v > 0.02 ? 3 : 1));
+
+	// Squish: signed value, positive squishes from the bottom edge
+	const scaleY = useTransform(motionSquish, (s) => 1 - Math.abs(s));
+	const contentScaleY = useTransform(motionSquish, (s) =>
+		Math.abs(s) > 0.001 ? 1 / (1 - Math.abs(s)) : 1,
+	);
+	const originY = useTransform(motionSquish, (s) =>
+		s > 0.001 ? 1 : s < -0.001 ? 0 : 0.5,
+	);
 
 	// Register motion values with DayView for shared-border access
 	useEffect(() => {
@@ -69,6 +124,8 @@ export function TimeBlock({
 		neighborBelow,
 		motionTop,
 		motionHeight,
+		visuals,
+		onGestureVisualChange,
 		getNeighborMotion,
 		isEditing,
 	});
@@ -77,13 +134,15 @@ export function TimeBlock({
 	useEffect(() => {
 		if (!gestureActiveRef.current) {
 			animate(motionTop, block.startMinute * MINUTE_HEIGHT, SNAP_SPRING);
-			animate(
-				motionHeight,
-				block.durationMinutes * MINUTE_HEIGHT,
-				SNAP_SPRING,
-			);
+			animate(motionHeight, block.durationMinutes * MINUTE_HEIGHT, SNAP_SPRING);
 		}
-	}, [block.startMinute, block.durationMinutes, motionTop, motionHeight, gestureActiveRef]);
+	}, [
+		block.startMinute,
+		block.durationMinutes,
+		motionTop,
+		motionHeight,
+		gestureActiveRef,
+	]);
 
 	// Auto-focus newly created blocks
 	useEffect(() => {
@@ -128,14 +187,24 @@ export function TimeBlock({
 		}
 	};
 
+	const color = COLOR_PALETTE[block.colorIndex];
+	const staticRange = formatTimeRange(
+		block.startMinute,
+		block.startMinute + block.durationMinutes,
+	);
+
 	return (
 		<motion.div
 			className={styles.timeBlock}
 			style={{
 				top: visualTop,
 				height: visualHeight,
-        borderColor: COLOR_PALETTE[block.colorIndex],
-				backgroundColor: COLOR_PALETTE[block.colorIndex],
+				scale,
+				scaleY,
+				originY,
+				zIndex,
+				borderColor: color,
+				backgroundColor: color,
 			}}
 			onPointerDown={isEditing ? undefined : onBlockPointerDown}
 			onTap={() => {
@@ -152,7 +221,15 @@ export function TimeBlock({
 				onPointerDown={onTopHandlePointerDown}
 			/>
 
-			<div className={styles.blockContent}>
+			{/* Gutter time badge: live range during gestures, static on hover */}
+			<div className={styles.timeBadge} data-visible={gestureVisual}>
+				{gestureVisual && liveRange ? liveRange : staticRange}
+			</div>
+
+			<motion.div
+				className={styles.blockContent}
+				style={{ scaleY: contentScaleY }}
+			>
 				{isEditing ? (
 					<input
 						ref={inputRef}
@@ -164,24 +241,31 @@ export function TimeBlock({
 						onPointerDown={(e) => e.stopPropagation()}
 					/>
 				) : (
-					<span className={styles.blockLabel}>
-						{block.label || "Untitled"}
-					</span>
+					<span className={styles.blockLabel}>{block.label || "Untitled"}</span>
 				)}
 				<button
 					type="button"
 					className={styles.deleteButton}
-		onPointerDown={(e) => {
+					aria-label="Delete block"
+					onPointerDown={(e) => {
 						e.stopPropagation();
 						deleteBlock(block.id);
 					}}
 				>
-					<svg width="10" height="10" viewBox="0 0 10 10" stroke="currentColor" strokeWidth="1" strokeLinecap="round">
+					<svg
+						aria-hidden="true"
+						width="10"
+						height="10"
+						viewBox="0 0 10 10"
+						stroke="currentColor"
+						strokeWidth="1"
+						strokeLinecap="round"
+					>
 						<line x1="2" y1="2" x2="8" y2="8" />
 						<line x1="8" y1="2" x2="2" y2="8" />
 					</svg>
 				</button>
-			</div>
+			</motion.div>
 
 			{/* Bottom resize handle */}
 			<div
