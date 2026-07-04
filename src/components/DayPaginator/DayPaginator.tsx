@@ -21,6 +21,7 @@ const variants = {
 export function DayPaginator() {
 	const currentDate = useStore((s) => s.currentDate);
 	const setCurrentDate = useStore((s) => s.setCurrentDate);
+	const isDraggingBlock = useStore((s) => s.isDraggingBlock);
 	const dirRef = useRef(0);
 
 	const navigate = (delta: number) => {
@@ -65,7 +66,7 @@ export function DayPaginator() {
 							damping: 30,
 						}}
 						className={styles.dayWrapper}
-						drag="x"
+						drag={isDraggingBlock ? false : "x"}
 						dragDirectionLock
 						dragConstraints={{ left: 0, right: 0 }}
 						dragElastic={0.2}

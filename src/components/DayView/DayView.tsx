@@ -26,6 +26,7 @@ export function DayView({ date }: DayViewProps) {
 	const addBlock = useStore((s) => s.addBlock);
 	const scrollRef = useRef<HTMLDivElement>(null);
 	const [newBlockId, setNewBlockId] = useState<string | null>(null);
+	const skipNextClickRef = useRef(false);
 
 	// Sort blocks by startMinute
 	const sorted = useMemo(
@@ -88,7 +89,15 @@ export function DayView({ date }: DayViewProps) {
 		});
 	}, [date]);
 
+	const handleEditEnd = useCallback(() => {
+		skipNextClickRef.current = true;
+	}, []);
+
 	const handleGridClick = (e: React.MouseEvent<HTMLDivElement>) => {
+		if (skipNextClickRef.current) {
+			skipNextClickRef.current = false;
+			return;
+		}
 		if (e.target !== e.currentTarget) return;
 
 		const rect = e.currentTarget.getBoundingClientRect();
@@ -128,6 +137,7 @@ export function DayView({ date }: DayViewProps) {
 							siblings={sorted.filter(
 								(b) => b.id !== block.id,
 							)}
+							onEditEnd={handleEditEnd}
 							registerMotionValues={registerMotionValues}
 							getNeighborMotion={getNeighborMotion}
 						/>

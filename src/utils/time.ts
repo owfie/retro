@@ -17,7 +17,8 @@ export function snapPx(px: number): number {
 }
 
 export function pxToSnappedMinutes(px: number): number {
-	return snapMinutes(pxToMinutes(px));
+	const minutes = pxToMinutes(px);
+	return Math.floor(minutes / SNAP_MINUTES) * SNAP_MINUTES;
 }
 
 export function clampMinutes(

@@ -1,4 +1,4 @@
-import { MINUTE_HEIGHT } from "@/constants";
+import { COLOR_PALETTE, MINUTE_HEIGHT } from "@/constants";
 import { useBlockGesture } from "@/hooks/useBlockGesture";
 import { useStore } from "@/store";
 import type { TimeBlock as TimeBlockType } from "@/types";
@@ -12,6 +12,7 @@ interface TimeBlockProps {
 	block: TimeBlockType;
 	autoFocus?: boolean;
 	onFocused?: () => void;
+	onEditEnd?: () => void;
 	neighborAbove: TimeBlockType | null;
 	neighborBelow: TimeBlockType | null;
 	siblings: TimeBlockType[];
@@ -29,6 +30,7 @@ export function TimeBlock({
 	block,
 	autoFocus,
 	onFocused,
+	onEditEnd,
 	neighborAbove,
 	neighborBelow,
 	siblings,
@@ -41,6 +43,7 @@ export function TimeBlock({
 	const [isEditing, setIsEditing] = useState(false);
 	const [localLabel, setLocalLabel] = useState(block.label);
 	const inputRef = useRef<HTMLInputElement>(null);
+	const escapedRef = useRef(false);
 
 	const motionTop = useMotionValue(block.startMinute * MINUTE_HEIGHT);
 	const motionHeight = useMotionValue(block.durationMinutes * MINUTE_HEIGHT);
@@ -97,12 +100,17 @@ export function TimeBlock({
 	}, [block.label]);
 
 	const saveLabel = () => {
+		if (escapedRef.current) {
+			escapedRef.current = false;
+			return;
+		}
 		if (localLabel.trim() === "") {
 			deleteBlock(block.id);
 		} else {
 			updateBlock(block.id, { label: localLabel });
 		}
 		setIsEditing(false);
+		onEditEnd?.();
 	};
 
 	const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -112,8 +120,10 @@ export function TimeBlock({
 			inputRef.current?.blur();
 		}
 		if (e.key === "Escape") {
+			escapedRef.current = true;
 			setLocalLabel(block.label);
 			setIsEditing(false);
+			onEditEnd?.();
 			inputRef.current?.blur();
 		}
 	};
@@ -124,8 +134,8 @@ export function TimeBlock({
 			style={{
 				top: visualTop,
 				height: visualHeight,
-        borderColor: block.color,
-				backgroundColor: block.color,
+        borderColor: COLOR_PALETTE[block.colorIndex],
+				backgroundColor: COLOR_PALETTE[block.colorIndex],
 			}}
 			onPointerDown={isEditing ? undefined : onBlockPointerDown}
 			onTap={() => {
@@ -161,12 +171,15 @@ export function TimeBlock({
 				<button
 					type="button"
 					className={styles.deleteButton}
-					onPointerDown={(e) => {
+		onPointerDown={(e) => {
 						e.stopPropagation();
 						deleteBlock(block.id);
 					}}
 				>
-					&times;
+					<svg width="10" height="10" viewBox="0 0 10 10" stroke="currentColor" strokeWidth="1" strokeLinecap="round">
+						<line x1="2" y1="2" x2="8" y2="8" />
+						<line x1="8" y1="2" x2="2" y2="8" />
+					</svg>
 				</button>
 			</div>
 

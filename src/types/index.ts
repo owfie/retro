@@ -4,5 +4,5 @@ export interface TimeBlock {
 	startMinute: number; // minutes from midnight (e.g. 540 = 9:00 AM)
 	durationMinutes: number; // multiple of 15, minimum 15
 	label: string;
-	color: string;
+	colorIndex: number;
 }

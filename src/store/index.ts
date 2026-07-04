@@ -8,7 +8,9 @@ interface RetroState {
 	blocks: TimeBlock[];
 	currentDate: string;
 	nextColorIndex: number;
+	isDraggingBlock: boolean;
 
+	setDraggingBlock: (dragging: boolean) => void;
 	addBlock: (date: string, startMinute: number) => string;
 	updateBlock: (id: string, updates: Partial<Omit<TimeBlock, "id">>) => void;
 	updateBlocks: (updates: Array<{ id: string; changes: Partial<Omit<TimeBlock, "id">> }>) => void;
@@ -23,16 +25,19 @@ export const useStore = create<RetroState>()(
 			blocks: [],
 			currentDate: formatDateToISO(new Date()),
 			nextColorIndex: 0,
+			isDraggingBlock: false,
+
+			setDraggingBlock: (dragging) => set({ isDraggingBlock: dragging }),
 
 			addBlock: (date, startMinute) => {
-				const color = COLOR_PALETTE[get().nextColorIndex];
+				const colorIndex = get().nextColorIndex;
 				const block: TimeBlock = {
 					id: crypto.randomUUID(),
 					date,
 					startMinute,
 					durationMinutes: DEFAULT_BLOCK_DURATION,
 					label: "",
-					color,
+					colorIndex,
 				};
 				set((state) => ({
 					blocks: [...state.blocks, block],
@@ -69,10 +74,26 @@ export const useStore = create<RetroState>()(
 		}),
 		{
 			name: "retro-storage",
+			version: 1,
 			partialize: (state) => ({
 				blocks: state.blocks,
 				nextColorIndex: state.nextColorIndex,
 			}),
+			migrate: (persisted: unknown, version: number) => {
+				if (version === 0) {
+					const state = persisted as { blocks?: Array<Record<string, unknown>>; nextColorIndex?: number };
+					const blocks = (state.blocks ?? []).map((b) => {
+						if ("color" in b && !("colorIndex" in b)) {
+							const { color, ...rest } = b;
+							const idx = COLOR_PALETTE.indexOf(color as typeof COLOR_PALETTE[number]);
+							return { ...rest, colorIndex: idx >= 0 ? idx : 0 };
+						}
+						return b;
+					});
+					return { ...state, blocks };
+				}
+				return persisted;
+			},
 		},
 	),
 );

@@ -43,6 +43,7 @@ export function useBlockGesture({
 }: UseBlockGestureOptions) {
 	const updateBlock = useStore((s) => s.updateBlock);
 	const updateBlocks = useStore((s) => s.updateBlocks);
+	const setDraggingBlock = useStore((s) => s.setDraggingBlock);
 	const gestureActiveRef = useRef(false);
 	const squishRef = useRef(0);
 	const squishAnimRef = useRef<{ stop: () => void } | null>(null);
@@ -61,6 +62,7 @@ export function useBlockGesture({
 			const initialStart = block.startMinute;
 			let currentStart = initialStart;
 			gestureActiveRef.current = true;
+			setDraggingBlock(true);
 
 			squishAnimRef.current?.stop();
 
@@ -142,6 +144,7 @@ export function useBlockGesture({
 				requestAnimationFrame(() => {
 					updateBlock(block.id, { startMinute: clamped });
 					gestureActiveRef.current = false;
+					setDraggingBlock(false);
 				});
 			};
 
@@ -175,6 +178,7 @@ export function useBlockGesture({
 
 			let currentDuration = initialDuration;
 			gestureActiveRef.current = true;
+			setDraggingBlock(true);
 
 			const neighborMotion = isShared
 				? getNeighborMotion(neighborBelow.id)
@@ -272,6 +276,7 @@ export function useBlockGesture({
 							},
 						]);
 						gestureActiveRef.current = false;
+						setDraggingBlock(false);
 					});
 				} else {
 					animate(
@@ -284,6 +289,7 @@ export function useBlockGesture({
 							durationMinutes: snappedDuration,
 						});
 						gestureActiveRef.current = false;
+						setDraggingBlock(false);
 					});
 				}
 			};
@@ -326,6 +332,7 @@ export function useBlockGesture({
 			let currentStart = initialStart;
 			let currentDuration = block.durationMinutes;
 			gestureActiveRef.current = true;
+			setDraggingBlock(true);
 
 			const neighborMotion = isShared
 				? getNeighborMotion(neighborAbove.id)
@@ -427,6 +434,7 @@ export function useBlockGesture({
 							},
 						]);
 						gestureActiveRef.current = false;
+						setDraggingBlock(false);
 					});
 				} else {
 					requestAnimationFrame(() => {
@@ -435,6 +443,7 @@ export function useBlockGesture({
 							durationMinutes: snappedDuration,
 						});
 						gestureActiveRef.current = false;
+						setDraggingBlock(false);
 					});
 				}
 			};
