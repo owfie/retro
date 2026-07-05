@@ -29,16 +29,36 @@ export function clampMinutes(
 	return Math.max(min, Math.min(max, minutes));
 }
 
-export function formatMinutesLabel(
+export interface TimeLabelSegments {
+	hour: string;
+	minutes: string | null;
+	period: string | null;
+}
+
+export function getTimeLabelSegments(
 	totalMinutes: number,
 	includePeriod: boolean,
-): string {
+): TimeLabelSegments {
 	const h24 = Math.floor(totalMinutes / 60) % 24;
 	const m = Math.round(totalMinutes % 60);
 	const period = h24 < 12 ? "AM" : "PM";
 	const h12 = h24 % 12 === 0 ? 12 : h24 % 12;
-	const base = m === 0 ? `${h12}` : `${h12}:${String(m).padStart(2, "0")}`;
-	return includePeriod ? `${base} ${period}` : base;
+	return {
+		hour: String(h12),
+		minutes: m === 0 ? null : `:${String(m).padStart(2, "0")}`,
+		period: includePeriod ? ` ${period}` : null,
+	};
+}
+
+export function formatMinutesLabel(
+	totalMinutes: number,
+	includePeriod: boolean,
+): string {
+	const { hour, minutes, period } = getTimeLabelSegments(
+		totalMinutes,
+		includePeriod,
+	);
+	return `${hour}${minutes ?? ""}${period ?? ""}`;
 }
 
 export function formatTimeRange(

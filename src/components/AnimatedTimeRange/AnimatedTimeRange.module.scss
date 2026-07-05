@@ -1,0 +1,20 @@
+.root {
+	display: inline;
+	font-variant-numeric: tabular-nums;
+	white-space: nowrap;
+}
+
+.segment {
+	display: inline-block;
+	position: relative;
+	overflow: hidden;
+	vertical-align: bottom;
+}
+
+.segmentValue {
+	display: inline-block;
+}
+
+.separator {
+	display: inline;
+}

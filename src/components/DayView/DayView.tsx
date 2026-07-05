@@ -1,4 +1,5 @@
 import {
+	AnimatePresence,
 	type MotionValue,
 	motion,
 	useMotionValue,
@@ -6,6 +7,7 @@ import {
 } from "motion/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useShallow } from "zustand/shallow";
+import { AnimatedTimeRange } from "@/components/AnimatedTimeRange/AnimatedTimeRange";
 import { NowLine } from "@/components/NowLine";
 import { TimeBlock } from "@/components/TimeBlock";
 import { TimeGrid } from "@/components/TimeGrid";
@@ -26,7 +28,6 @@ import type { TimeBlock as TimeBlockType } from "@/types";
 import { startVerticalGesture } from "@/utils/gesture";
 import {
 	formatDateToISO,
-	formatTimeRange,
 	pxToSnappedMinutes,
 } from "@/utils/time";
 import styles from "./DayView.module.scss";
@@ -51,7 +52,10 @@ export function DayView({ date, onSwipeStart }: DayViewProps) {
 	// Draft state for drag-to-create. Targets snap in minute increments; the
 	// springs render them so the draft grows smoothly, matching block gestures.
 	const [draftSwatch, setDraftSwatch] = useState<ThemeSwatch | null>(null);
-	const [draftRange, setDraftRange] = useState("");
+	const [draftTimes, setDraftTimes] = useState<{
+		start: number;
+		end: number;
+	} | null>(null);
 	const draftTopTarget = useMotionValue(0);
 	const draftHeightTarget = useMotionValue(0);
 	const draftTop = useSpring(draftTopTarget, FOLLOW_SPRING);
@@ -134,7 +138,11 @@ export function DayView({ date, onSwipeStart }: DayViewProps) {
 		// A click that ends a label edit should only blur the input,
 		// not simultaneously create a new block.
 		const active = document.activeElement;
-		if (active instanceof HTMLInputElement) return;
+		if (
+			active instanceof HTMLInputElement ||
+			active instanceof HTMLTextAreaElement
+		)
+			return;
 
 		// Arm the horizontal day-swipe. Vertical intent grows the draft below;
 		// dragDirectionLock keeps the swipe from translating in that case.
@@ -177,7 +185,7 @@ export function DayView({ date, onSwipeStart }: DayViewProps) {
 		draftHeightTarget.jump(anchorHeightPx);
 		draftTop.jump(anchorTopPx);
 		draftHeight.jump(anchorHeightPx);
-		setDraftRange(formatTimeRange(dragStart, dragEnd));
+		setDraftTimes({ start: dragStart, end: dragEnd });
 
 		const updateDraft = (clientY: number) => {
 			const y = clientY - container.getBoundingClientRect().top;
@@ -203,7 +211,7 @@ export function DayView({ date, onSwipeStart }: DayViewProps) {
 			}
 			draftTopTarget.set(dragStart * MINUTE_HEIGHT);
 			draftHeightTarget.set((dragEnd - dragStart) * MINUTE_HEIGHT - BLOCK_GAP);
-			setDraftRange(formatTimeRange(dragStart, dragEnd));
+			setDraftTimes({ start: dragStart, end: dragEnd });
 		};
 
 		startVerticalGesture(e, {
@@ -213,10 +221,14 @@ export function DayView({ date, onSwipeStart }: DayViewProps) {
 			onUpdate: ({ clientY, began }) => {
 				if (began) updateDraft(clientY);
 			},
-			onAbort: () => setDraftSwatch(null),
+			onAbort: () => {
+				setDraftSwatch(null);
+				setDraftTimes(null);
+			},
 			onEnd: ({ began, cancelled }) => {
 				if (began) setDraggingBlock(false);
 				setDraftSwatch(null);
+				setDraftTimes(null);
 				if (cancelled) return;
 				const id = addBlock(date, dragStart, dragEnd - dragStart);
 				setNewBlockId(id);
@@ -254,25 +266,34 @@ export function DayView({ date, onSwipeStart }: DayViewProps) {
 							color: draftSwatch.text,
 						}}
 					>
-						<span className={styles.draftLabel}>{draftRange}</span>
+						{draftTimes && (
+							<AnimatedTimeRange
+								className={styles.draftLabel}
+								startMinute={draftTimes.start}
+								endMinute={draftTimes.end}
+								animate
+							/>
+						)}
 					</motion.div>
 				)}
-				{sorted.map((block) => {
-					const adj = adjacency.get(block.id);
-					return (
-						<TimeBlock
-							key={block.id}
-							block={block}
-							autoFocus={block.id === newBlockId}
-							onFocused={() => setNewBlockId(null)}
-							neighborAbove={adj?.above ?? null}
-							neighborBelow={adj?.below ?? null}
-							siblings={sorted.filter((b) => b.id !== block.id)}
-							registerTargets={registerTargets}
-							getNeighborTargets={getNeighborTargets}
-						/>
-					);
-				})}
+				<AnimatePresence initial={false}>
+					{sorted.map((block) => {
+						const adj = adjacency.get(block.id);
+						return (
+							<TimeBlock
+								key={block.id}
+								block={block}
+								autoFocus={block.id === newBlockId}
+								onFocused={() => setNewBlockId(null)}
+								neighborAbove={adj?.above ?? null}
+								neighborBelow={adj?.below ?? null}
+								siblings={sorted.filter((b) => b.id !== block.id)}
+								registerTargets={registerTargets}
+								getNeighborTargets={getNeighborTargets}
+							/>
+						);
+					})}
+				</AnimatePresence>
 			</div>
 		</div>
 	);

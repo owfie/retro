@@ -19,6 +19,7 @@ export const TOTAL_DAY_HEIGHT = DAY_END_MINUTES * MINUTE_HEIGHT; // 2880px
 export const FOLLOW_SPRING = { stiffness: 550, damping: 40 } as const;
 /** Lift in/out on pick-up and release. */
 export const LIFT_SPRING = { stiffness: 400, damping: 28 } as const;
+export const ENTRANCE_SPRING = { stiffness: 450, damping: 24 } as const;
 /** Collision squish build-up and decay. */
 export const SQUISH_SPRING = { stiffness: 500, damping: 35 } as const;
 

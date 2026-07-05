@@ -39,7 +39,6 @@
 		bottom: -6px;
 	}
 
-	// Grabber pill, revealed on block hover, inset like the delete button
 	&::after {
 		content: "";
 		position: absolute;
@@ -53,7 +52,6 @@
 		transition: opacity 0.15s;
 	}
 
-	// Handles straddle the block edge (6px out); +3px matches the X inset
 	&[data-edge="top"]::after {
 		top: 9px;
 	}
@@ -67,38 +65,54 @@
 	display: flex;
 	flex-direction: column;
 	align-items: stretch;
-	gap: 1px;
 	padding: 5px 8px;
 	min-height: 0;
 	flex: 1;
 	height: 100%;
 	overflow: hidden;
-
-	// 15-min blocks only fit one line: time and label share a row
-	&[data-compact="true"] {
-		flex-direction: row;
-		align-items: center;
-		gap: 8px;
-	}
 }
 
 .blockTime {
+	display: block;
 	font-size: 10px;
-	font-weight: 500;
+	font-weight: 400;
 	font-variant-numeric: tabular-nums;
-	opacity: 0.75;
 	white-space: nowrap;
 	flex-shrink: 0;
 	line-height: 1.4;
+	height: 0;
+	opacity: 0;
+	overflow: hidden;
+	transition: opacity 0.12s;
+	pointer-events: none;
+	user-select: none;
+
+	.timeBlock:hover &,
+	&[data-visible="true"] {
+		height: 14px;
+		opacity: 0.75;
+	}
 }
 
 .blockInput {
 	flex: 1;
-	font-size: 12px;
-	font-weight: 600;
+	width: 100%;
 	min-width: 0;
+	min-height: 0;
+	padding: 0;
+	margin: 0;
+	font-family: inherit;
+	font-size: 12px;
+	font-weight: 400;
+	line-height: 1.4;
 	cursor: text;
 	color: inherit;
+	background: transparent;
+	border: none;
+	outline: none;
+	appearance: none;
+	resize: none;
+	overflow: auto;
 	-webkit-user-select: text;
 	user-select: text;
 }
@@ -106,12 +120,18 @@
 .blockLabel {
 	flex: 1;
 	min-width: 0;
+	min-height: 0;
 	font-size: 12px;
-	font-weight: 600;
+	font-weight: 400;
+	line-height: 1.4;
 	overflow: hidden;
-	text-overflow: ellipsis;
-	white-space: nowrap;
+	white-space: pre-wrap;
+	overflow-wrap: anywhere;
 	cursor: text;
+
+	&[data-empty="true"] {
+		opacity: 0.55;
+	}
 }
 
 .deleteButton {

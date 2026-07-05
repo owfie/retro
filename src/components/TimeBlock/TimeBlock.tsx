@@ -9,16 +9,18 @@ import {
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
 	BLOCK_GAP,
+	ENTRANCE_SPRING,
 	FOLLOW_SPRING,
 	LIFT_SPRING,
 	MINUTE_HEIGHT,
 	SQUISH_SPRING,
 } from "@/constants";
+import { AnimatedTimeRange } from "@/components/AnimatedTimeRange/AnimatedTimeRange";
 import { useBlockGesture } from "@/hooks/useBlockGesture";
 import { useThemePalette } from "@/hooks/useThemePalette";
+import type { LiveTimeRange } from "@/hooks/useBlockGesture";
 import { useStore } from "@/store";
 import type { TimeBlock as TimeBlockType } from "@/types";
-import { formatTimeRange } from "@/utils/time";
 import styles from "./TimeBlock.module.scss";
 
 interface TimeBlockProps {
@@ -53,36 +55,39 @@ export function TimeBlock({
 
 	const [isEditing, setIsEditing] = useState(false);
 	const [localLabel, setLocalLabel] = useState(block.label);
-	const inputRef = useRef<HTMLInputElement>(null);
+	const inputRef = useRef<HTMLTextAreaElement>(null);
 	const escapedRef = useRef(false);
+	const isNewRef = useRef(false);
 
-	// Gesture handlers set these targets synchronously; the spring followers
-	// below render them, so on-screen motion stays continuous even when a
-	// target jumps across a snap detent.
 	const targetTop = useMotionValue(block.startMinute * MINUTE_HEIGHT);
 	const targetHeight = useMotionValue(block.durationMinutes * MINUTE_HEIGHT);
 	const liftTarget = useMotionValue(0);
 	const squishTarget = useMotionValue(0);
-	const timeLabel = useMotionValue("");
+	const liveRange = useMotionValue<LiveTimeRange | null>(null);
 
 	const top = useSpring(targetTop, FOLLOW_SPRING);
 	const height = useSpring(targetHeight, FOLLOW_SPRING);
 	const lift = useSpring(liftTarget, LIFT_SPRING);
 	const squish = useSpring(squishTarget, SQUISH_SPRING);
 
+	const entranceTarget = useMotionValue(autoFocus ? 0 : 1);
+	const entrance = useSpring(entranceTarget, ENTRANCE_SPRING);
+	useEffect(() => {
+		entranceTarget.set(1);
+	}, [entranceTarget]);
+
 	const visuals = useMemo(
 		() => ({
 			lift: liftTarget,
 			squish: squishTarget,
-			timeLabel,
+			liveRange,
 		}),
-		[liftTarget, squishTarget, timeLabel],
+		[liftTarget, squishTarget, liveRange],
 	);
 
-	// Live in-block time text during gestures (updates only on snap changes)
 	const [gestureVisual, setGestureVisual] = useState(false);
-	const [liveRange, setLiveRange] = useState("");
-	useMotionValueEvent(timeLabel, "change", (v) => setLiveRange(v));
+	const [gestureTimes, setGestureTimes] = useState<LiveTimeRange | null>(null);
+	useMotionValueEvent(liveRange, "change", (v) => setGestureTimes(v));
 	const onGestureVisualChange = useCallback(
 		(active: boolean) => setGestureVisual(active),
 		[],
@@ -95,11 +100,11 @@ export function TimeBlock({
 
 	const visualHeight = useTransform(height, (h) => h - BLOCK_GAP);
 
-	// Lift: subtle scale + raised z-index while dragging
-	const scale = useTransform(lift, (v) => 1 + v * 0.02);
+	const scale = useTransform(
+		() => (1 + lift.get() * 0.02) * (0.96 + entrance.get() * 0.04),
+	);
 	const zIndex = useTransform(lift, (v) => (v > 0.02 ? 3 : 1));
 
-	// Squish: signed value, positive squishes from the bottom edge
 	const scaleY = useTransform(squish, (s) => 1 - Math.abs(s));
 	const contentScaleY = useTransform(squish, (s) =>
 		Math.abs(s) > 0.001 ? 1 / (1 - Math.abs(s)) : 1,
@@ -108,7 +113,6 @@ export function TimeBlock({
 		s > 0.001 ? 1 : s < -0.001 ? 0 : 0.5,
 	);
 
-	// Register targets with DayView for shared-border access
 	useEffect(() => {
 		registerTargets(block.id, targetTop, targetHeight);
 	}, [block.id, targetTop, targetHeight, registerTargets]);
@@ -131,22 +135,19 @@ export function TimeBlock({
 		isEditing,
 	});
 
-	// Follow store changes. After a gesture commit this is a no-op, since the
-	// targets already hold the committed values.
 	useEffect(() => {
 		targetTop.set(block.startMinute * MINUTE_HEIGHT);
 		targetHeight.set(block.durationMinutes * MINUTE_HEIGHT);
 	}, [block.startMinute, block.durationMinutes, targetTop, targetHeight]);
 
-	// Auto-focus newly created blocks
 	useEffect(() => {
 		if (autoFocus) {
+			isNewRef.current = true;
 			beginEditing();
 			onFocused?.();
 		}
 	}, [autoFocus, onFocused, beginEditing]);
 
-	// Sync local label with store
 	useEffect(() => {
 		setLocalLabel(block.label);
 	}, [block.label]);
@@ -156,22 +157,23 @@ export function TimeBlock({
 			escapedRef.current = false;
 			return;
 		}
-		if (localLabel.trim() === "") {
-			deleteBlock(block.id);
-		} else {
-			updateBlock(block.id, { label: localLabel });
-		}
+		isNewRef.current = false;
+		updateBlock(block.id, { label: localLabel.trim() });
 		setIsEditing(false);
 	};
 
 	const handleKeyDown = (e: React.KeyboardEvent) => {
-		if (e.key === "Enter") {
+		if (e.key === "Enter" && !e.shiftKey) {
 			e.preventDefault();
 			saveLabel();
 			inputRef.current?.blur();
 		}
 		if (e.key === "Escape") {
 			escapedRef.current = true;
+			if (isNewRef.current && !block.label) {
+				deleteBlock(block.id);
+				return;
+			}
 			setLocalLabel(block.label);
 			setIsEditing(false);
 			inputRef.current?.blur();
@@ -180,14 +182,17 @@ export function TimeBlock({
 
 	const palette = useThemePalette();
 	const swatch = palette[block.colorIndex % palette.length];
-	const staticRange = formatTimeRange(
-		block.startMinute,
-		block.startMinute + block.durationMinutes,
-	);
+	const displayStart = gestureTimes?.start ?? block.startMinute;
+	const displayEnd =
+		gestureTimes?.end ?? block.startMinute + block.durationMinutes;
 
 	return (
 		<motion.div
 			className={styles.timeBlock}
+			initial={{ opacity: 0 }}
+			animate={{ opacity: 1 }}
+			exit={{ opacity: 0 }}
+			transition={{ duration: 0.12 }}
 			style={{
 				top,
 				height: visualHeight,
@@ -201,7 +206,6 @@ export function TimeBlock({
 			}}
 			onPointerDown={isEditing ? undefined : onBlockPointerDown}
 		>
-			{/* Top resize handle */}
 			<div
 				className={styles.resizeHandle}
 				data-edge="top"
@@ -210,24 +214,35 @@ export function TimeBlock({
 
 			<motion.div
 				className={styles.blockContent}
-				data-compact={block.durationMinutes < 30}
 				style={{ scaleY: contentScaleY }}
 			>
-				<span className={styles.blockTime}>
-					{gestureVisual && liveRange ? liveRange : staticRange}
-				</span>
+				{!isEditing && (
+					<span
+						className={styles.blockTime}
+						data-visible={gestureVisual || undefined}
+					>
+						<AnimatedTimeRange
+							startMinute={displayStart}
+							endMinute={displayEnd}
+							animate={gestureVisual}
+						/>
+					</span>
+				)}
 				{isEditing ? (
-					<input
+					<textarea
 						ref={inputRef}
 						className={styles.blockInput}
 						value={localLabel}
+						rows={1}
 						onChange={(e) => setLocalLabel(e.target.value)}
 						onKeyDown={handleKeyDown}
 						onBlur={saveLabel}
 						onPointerDown={(e) => e.stopPropagation()}
 					/>
 				) : (
-					<span className={styles.blockLabel}>{block.label || "Untitled"}</span>
+					<span className={styles.blockLabel} data-empty={!block.label}>
+						{block.label || "Untitled"}
+					</span>
 				)}
 				<button
 					type="button"
@@ -253,7 +268,6 @@ export function TimeBlock({
 				</button>
 			</motion.div>
 
-			{/* Bottom resize handle */}
 			<div
 				className={styles.resizeHandle}
 				data-edge="bottom"

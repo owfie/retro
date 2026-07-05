@@ -16,7 +16,9 @@ import {
 	constrainResizeBottom,
 	constrainResizeTop,
 } from "@/utils/overlap";
-import { formatTimeRange, snapMinutes } from "@/utils/time";
+import { snapMinutes } from "@/utils/time";
+
+export type LiveTimeRange = { start: number; end: number };
 
 /**
  * Target motion values for gesture feedback. These are set synchronously by
@@ -26,7 +28,7 @@ import { formatTimeRange, snapMinutes } from "@/utils/time";
 export interface GestureVisuals {
 	lift: MotionValue<number>;
 	squish: MotionValue<number>;
-	timeLabel: MotionValue<string>;
+	liveRange: MotionValue<LiveTimeRange | null>;
 }
 
 /** Lean toward the pointer between detents, in px. */
@@ -94,9 +96,10 @@ export function useBlockGesture({
 			startVerticalGesture(e, {
 				onBegin: () => {
 					visuals.lift.set(1);
-					visuals.timeLabel.set(
-						formatTimeRange(initialStart, initialStart + duration),
-					);
+					visuals.liveRange.set({
+						start: initialStart,
+						end: initialStart + duration,
+					});
 					onGestureVisualChange?.(true);
 				},
 				onUpdate: ({ deltaMinutes, began }) => {
@@ -110,7 +113,10 @@ export function useBlockGesture({
 					);
 					if (snapped !== lastSnapped) {
 						lastSnapped = snapped;
-						visuals.timeLabel.set(formatTimeRange(snapped, snapped + duration));
+						visuals.liveRange.set({
+							start: snapped,
+							end: snapped + duration,
+						});
 					}
 					// Detent + lean toward the pointer; the follower spring keeps
 					// the on-screen motion continuous across detent jumps.
@@ -143,6 +149,7 @@ export function useBlockGesture({
 					targetTop.set(clamped * MINUTE_HEIGHT);
 					visuals.lift.set(0);
 					visuals.squish.set(0);
+					visuals.liveRange.set(null);
 					onGestureVisualChange?.(false);
 					updateBlock(block.id, { startMinute: clamped });
 					setDraggingBlock(false);
@@ -197,6 +204,10 @@ export function useBlockGesture({
 
 			startVerticalGesture(e, {
 				onBegin: () => {
+					visuals.liveRange.set({
+						start: block.startMinute,
+						end: block.startMinute + initialDuration,
+					});
 					onGestureVisualChange?.(true);
 				},
 				onUpdate: ({ deltaMinutes, began }) => {
@@ -229,12 +240,10 @@ export function useBlockGesture({
 							neighborTargets.top.set(neighbor.start * MINUTE_HEIGHT);
 							neighborTargets.height.set(neighbor.duration * MINUTE_HEIGHT);
 						}
-						visuals.timeLabel.set(
-							formatTimeRange(
-								block.startMinute,
-								block.startMinute + snappedDuration,
-							),
-						);
+						visuals.liveRange.set({
+							start: block.startMinute,
+							end: block.startMinute + snappedDuration,
+						});
 					}
 					targetHeight.set(
 						snappedDuration * MINUTE_HEIGHT +
@@ -251,6 +260,7 @@ export function useBlockGesture({
 						snapMinutes(currentDuration),
 					);
 					targetHeight.set(snappedDuration * MINUTE_HEIGHT);
+					visuals.liveRange.set(null);
 					onGestureVisualChange?.(false);
 
 					if (isShared) {
@@ -325,6 +335,10 @@ export function useBlockGesture({
 
 			startVerticalGesture(e, {
 				onBegin: () => {
+					visuals.liveRange.set({
+						start: initialStart,
+						end: blockEnd,
+					});
 					onGestureVisualChange?.(true);
 				},
 				onUpdate: ({ deltaMinutes, began }) => {
@@ -358,7 +372,7 @@ export function useBlockGesture({
 								(finalStart - neighborStart) * MINUTE_HEIGHT,
 							);
 						}
-						visuals.timeLabel.set(formatTimeRange(finalStart, blockEnd));
+						visuals.liveRange.set({ start: finalStart, end: blockEnd });
 					}
 					const lean = leanPx(currentStart - finalStart);
 					targetTop.set(finalStart * MINUTE_HEIGHT + lean);
@@ -376,6 +390,7 @@ export function useBlockGesture({
 					const finalStart = blockEnd - snappedDuration;
 					targetTop.set(finalStart * MINUTE_HEIGHT);
 					targetHeight.set(snappedDuration * MINUTE_HEIGHT);
+					visuals.liveRange.set(null);
 					onGestureVisualChange?.(false);
 
 					if (isShared) {
