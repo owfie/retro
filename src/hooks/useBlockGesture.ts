@@ -25,10 +25,20 @@ export type LiveTimeRange = { start: number; end: number };
  * the gesture handlers; TimeBlock renders them through spring followers, so
  * detent jumps in the targets become continuous snaps on screen.
  */
+export type ResizeEdge = "top" | "bottom";
+
+export interface BlockGestureTargets {
+	top: MotionValue<number>;
+	height: MotionValue<number>;
+	liveRange: MotionValue<LiveTimeRange | null>;
+	resizeEdgeActive: MotionValue<ResizeEdge | null>;
+}
+
 export interface GestureVisuals {
 	lift: MotionValue<number>;
 	squish: MotionValue<number>;
 	liveRange: MotionValue<LiveTimeRange | null>;
+	resizeEdgeActive: MotionValue<ResizeEdge | null>;
 }
 
 /** Lean toward the pointer between detents, in px. */
@@ -44,13 +54,9 @@ interface UseBlockGestureOptions {
 	targetTop: MotionValue<number>;
 	targetHeight: MotionValue<number>;
 	visuals: GestureVisuals;
-	/** Fired when gesture feedback (live time range) should show/hide. */
-	onGestureVisualChange?: (active: boolean) => void;
 	/** Fired when the pointer is released without dragging (click-to-edit). */
 	onTap?: () => void;
-	getNeighborTargets: (
-		id: string,
-	) => { top: MotionValue<number>; height: MotionValue<number> } | undefined;
+	getNeighborTargets: (id: string) => BlockGestureTargets | undefined;
 	isEditing: boolean;
 }
 
@@ -62,7 +68,6 @@ export function useBlockGesture({
 	targetTop,
 	targetHeight,
 	visuals,
-	onGestureVisualChange,
 	onTap,
 	getNeighborTargets,
 	isEditing,
@@ -100,7 +105,6 @@ export function useBlockGesture({
 						start: initialStart,
 						end: initialStart + duration,
 					});
-					onGestureVisualChange?.(true);
 				},
 				onUpdate: ({ deltaMinutes, began }) => {
 					if (!began) return;
@@ -150,7 +154,6 @@ export function useBlockGesture({
 					visuals.lift.set(0);
 					visuals.squish.set(0);
 					visuals.liveRange.set(null);
-					onGestureVisualChange?.(false);
 					updateBlock(block.id, { startMinute: clamped });
 					setDraggingBlock(false);
 				},
@@ -162,7 +165,6 @@ export function useBlockGesture({
 			siblings,
 			targetTop,
 			visuals,
-			onGestureVisualChange,
 			onTap,
 			updateBlock,
 			setDraggingBlock,
@@ -208,7 +210,14 @@ export function useBlockGesture({
 						start: block.startMinute,
 						end: block.startMinute + initialDuration,
 					});
-					onGestureVisualChange?.(true);
+					visuals.resizeEdgeActive.set("bottom");
+					if (neighborTargets) {
+						neighborTargets.resizeEdgeActive.set("top");
+						neighborTargets.liveRange.set({
+							start: block.startMinute + initialDuration,
+							end: blockEnd + neighborInitialDuration,
+						});
+					}
 				},
 				onUpdate: ({ deltaMinutes, began }) => {
 					if (!began) return;
@@ -233,22 +242,37 @@ export function useBlockGesture({
 						SNAP_MINUTES,
 						snapMinutes(currentDuration),
 					);
-					if (snappedDuration !== lastSnapped) {
-						lastSnapped = snappedDuration;
-						if (neighborTargets) {
-							const neighbor = neighborFor(snappedDuration);
-							neighborTargets.top.set(neighbor.start * MINUTE_HEIGHT);
-							neighborTargets.height.set(neighbor.duration * MINUTE_HEIGHT);
+					const lean = leanPx(currentDuration - snappedDuration);
+					const borderPx =
+						(block.startMinute + snappedDuration) * MINUTE_HEIGHT + lean;
+
+					targetHeight.set(borderPx - block.startMinute * MINUTE_HEIGHT);
+
+					if (neighborTargets) {
+						const neighborEnd = blockEnd + neighborInitialDuration;
+						neighborTargets.top.set(borderPx);
+						neighborTargets.height.set(
+							neighborEnd * MINUTE_HEIGHT - borderPx,
+						);
+						if (snappedDuration !== lastSnapped) {
+							lastSnapped = snappedDuration;
+							const neighborStart = block.startMinute + snappedDuration;
+							neighborTargets.liveRange.set({
+								start: neighborStart,
+								end: neighborEnd,
+							});
+							visuals.liveRange.set({
+								start: block.startMinute,
+								end: neighborStart,
+							});
 						}
+					} else if (snappedDuration !== lastSnapped) {
+						lastSnapped = snappedDuration;
 						visuals.liveRange.set({
 							start: block.startMinute,
 							end: block.startMinute + snappedDuration,
 						});
 					}
-					targetHeight.set(
-						snappedDuration * MINUTE_HEIGHT +
-							leanPx(currentDuration - snappedDuration),
-					);
 				},
 				onEnd: ({ began }) => {
 					if (!began) {
@@ -261,7 +285,9 @@ export function useBlockGesture({
 					);
 					targetHeight.set(snappedDuration * MINUTE_HEIGHT);
 					visuals.liveRange.set(null);
-					onGestureVisualChange?.(false);
+					visuals.resizeEdgeActive.set(null);
+					neighborTargets?.resizeEdgeActive.set(null);
+					neighborTargets?.liveRange.set(null);
 
 					if (isShared) {
 						const neighbor = neighborFor(snappedDuration);
@@ -301,7 +327,6 @@ export function useBlockGesture({
 			neighborBelow,
 			targetHeight,
 			visuals,
-			onGestureVisualChange,
 			getNeighborTargets,
 			updateBlock,
 			updateBlocks,
@@ -339,7 +364,14 @@ export function useBlockGesture({
 						start: initialStart,
 						end: blockEnd,
 					});
-					onGestureVisualChange?.(true);
+					visuals.resizeEdgeActive.set("top");
+					if (neighborTargets) {
+						neighborTargets.resizeEdgeActive.set("bottom");
+						neighborTargets.liveRange.set({
+							start: neighborStart,
+							end: initialStart,
+						});
+					}
 				},
 				onUpdate: ({ deltaMinutes, began }) => {
 					if (!began) return;
@@ -365,18 +397,28 @@ export function useBlockGesture({
 						blockEnd - snapMinutes(currentStart),
 					);
 					const finalStart = blockEnd - snappedDur;
-					if (finalStart !== lastFinalStart) {
-						lastFinalStart = finalStart;
-						if (neighborTargets) {
-							neighborTargets.height.set(
-								(finalStart - neighborStart) * MINUTE_HEIGHT,
-							);
+					const lean = leanPx(currentStart - finalStart);
+					const borderPx = finalStart * MINUTE_HEIGHT + lean;
+
+					targetTop.set(borderPx);
+					targetHeight.set(blockEnd * MINUTE_HEIGHT - borderPx);
+
+					if (neighborTargets) {
+						neighborTargets.height.set(
+							borderPx - neighborStart * MINUTE_HEIGHT,
+						);
+						if (finalStart !== lastFinalStart) {
+							lastFinalStart = finalStart;
+							neighborTargets.liveRange.set({
+								start: neighborStart,
+								end: finalStart,
+							});
+							visuals.liveRange.set({ start: finalStart, end: blockEnd });
 						}
+					} else if (finalStart !== lastFinalStart) {
+						lastFinalStart = finalStart;
 						visuals.liveRange.set({ start: finalStart, end: blockEnd });
 					}
-					const lean = leanPx(currentStart - finalStart);
-					targetTop.set(finalStart * MINUTE_HEIGHT + lean);
-					targetHeight.set(snappedDur * MINUTE_HEIGHT - lean);
 				},
 				onEnd: ({ began }) => {
 					if (!began) {
@@ -391,7 +433,9 @@ export function useBlockGesture({
 					targetTop.set(finalStart * MINUTE_HEIGHT);
 					targetHeight.set(snappedDuration * MINUTE_HEIGHT);
 					visuals.liveRange.set(null);
-					onGestureVisualChange?.(false);
+					visuals.resizeEdgeActive.set(null);
+					neighborTargets?.resizeEdgeActive.set(null);
+					neighborTargets?.liveRange.set(null);
 
 					if (isShared) {
 						const snappedNeighborDuration = Math.max(
@@ -431,7 +475,6 @@ export function useBlockGesture({
 			targetTop,
 			targetHeight,
 			visuals,
-			onGestureVisualChange,
 			getNeighborTargets,
 			updateBlock,
 			updateBlocks,

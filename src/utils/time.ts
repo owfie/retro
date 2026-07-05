@@ -29,45 +29,27 @@ export function clampMinutes(
 	return Math.max(min, Math.min(max, minutes));
 }
 
-export interface TimeLabelSegments {
-	hour: string;
+export interface DurationLabelSegments {
+	hours: string | null;
 	minutes: string | null;
-	period: string | null;
 }
 
-export function getTimeLabelSegments(
+export function getDurationLabelSegments(
 	totalMinutes: number,
-	includePeriod: boolean,
-): TimeLabelSegments {
-	const h24 = Math.floor(totalMinutes / 60) % 24;
-	const m = Math.round(totalMinutes % 60);
-	const period = h24 < 12 ? "AM" : "PM";
-	const h12 = h24 % 12 === 0 ? 12 : h24 % 12;
+): DurationLabelSegments {
+	const rounded = Math.max(0, Math.round(totalMinutes));
+	const h = Math.floor(rounded / 60);
+	const m = rounded % 60;
 	return {
-		hour: String(h12),
-		minutes: m === 0 ? null : `:${String(m).padStart(2, "0")}`,
-		period: includePeriod ? ` ${period}` : null,
+		hours: h > 0 ? `${h}h` : null,
+		minutes: h > 0 ? (m > 0 ? `${m}m` : null) : `${rounded}m`,
 	};
 }
 
-export function formatMinutesLabel(
-	totalMinutes: number,
-	includePeriod: boolean,
-): string {
-	const { hour, minutes, period } = getTimeLabelSegments(
-		totalMinutes,
-		includePeriod,
-	);
-	return `${hour}${minutes ?? ""}${period ?? ""}`;
-}
-
-export function formatTimeRange(
-	startMinute: number,
-	endMinute: number,
-): string {
-	const startPeriod = Math.floor(startMinute / 60) % 24 < 12 ? "AM" : "PM";
-	const endPeriod = Math.floor(endMinute / 60) % 24 < 12 ? "AM" : "PM";
-	return `${formatMinutesLabel(startMinute, startPeriod !== endPeriod)} – ${formatMinutesLabel(endMinute, true)}`;
+export function formatDurationLabel(totalMinutes: number): string {
+	const { hours, minutes } = getDurationLabelSegments(totalMinutes);
+	if (hours && minutes) return `${hours} ${minutes}`;
+	return hours ?? minutes ?? "0m";
 }
 
 export function parseLocalDate(iso: string): Date {

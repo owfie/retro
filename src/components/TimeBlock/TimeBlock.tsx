@@ -1,5 +1,4 @@
 import {
-	type MotionValue,
 	motion,
 	useMotionValue,
 	useMotionValueEvent,
@@ -16,9 +15,13 @@ import {
 	SQUISH_SPRING,
 } from "@/constants";
 import { AnimatedTimeRange } from "@/components/AnimatedTimeRange/AnimatedTimeRange";
-import { useBlockGesture } from "@/hooks/useBlockGesture";
+import {
+	type BlockGestureTargets,
+	useBlockGesture,
+	type LiveTimeRange,
+	type ResizeEdge,
+} from "@/hooks/useBlockGesture";
 import { useThemePalette } from "@/hooks/useThemePalette";
-import type { LiveTimeRange } from "@/hooks/useBlockGesture";
 import { useStore } from "@/store";
 import type { TimeBlock as TimeBlockType } from "@/types";
 import styles from "./TimeBlock.module.scss";
@@ -32,12 +35,9 @@ interface TimeBlockProps {
 	siblings: TimeBlockType[];
 	registerTargets: (
 		id: string,
-		top: MotionValue<number>,
-		height: MotionValue<number>,
+		targets: BlockGestureTargets,
 	) => void;
-	getNeighborTargets: (
-		id: string,
-	) => { top: MotionValue<number>; height: MotionValue<number> } | undefined;
+	getNeighborTargets: (id: string) => BlockGestureTargets | undefined;
 }
 
 export function TimeBlock({
@@ -64,6 +64,7 @@ export function TimeBlock({
 	const liftTarget = useMotionValue(0);
 	const squishTarget = useMotionValue(0);
 	const liveRange = useMotionValue<LiveTimeRange | null>(null);
+	const resizeEdgeActive = useMotionValue<ResizeEdge | null>(null);
 
 	const top = useSpring(targetTop, FOLLOW_SPRING);
 	const height = useSpring(targetHeight, FOLLOW_SPRING);
@@ -81,17 +82,19 @@ export function TimeBlock({
 			lift: liftTarget,
 			squish: squishTarget,
 			liveRange,
+			resizeEdgeActive,
 		}),
-		[liftTarget, squishTarget, liveRange],
+		[liftTarget, squishTarget, liveRange, resizeEdgeActive],
 	);
 
 	const [gestureVisual, setGestureVisual] = useState(false);
 	const [gestureTimes, setGestureTimes] = useState<LiveTimeRange | null>(null);
-	useMotionValueEvent(liveRange, "change", (v) => setGestureTimes(v));
-	const onGestureVisualChange = useCallback(
-		(active: boolean) => setGestureVisual(active),
-		[],
-	);
+	const [activeEdge, setActiveEdge] = useState<ResizeEdge | null>(null);
+	useMotionValueEvent(liveRange, "change", (v) => {
+		setGestureTimes(v);
+		setGestureVisual(v !== null);
+	});
+	useMotionValueEvent(resizeEdgeActive, "change", setActiveEdge);
 
 	const beginEditing = useCallback(() => {
 		setIsEditing(true);
@@ -114,8 +117,20 @@ export function TimeBlock({
 	);
 
 	useEffect(() => {
-		registerTargets(block.id, targetTop, targetHeight);
-	}, [block.id, targetTop, targetHeight, registerTargets]);
+		registerTargets(block.id, {
+			top: targetTop,
+			height: targetHeight,
+			liveRange,
+			resizeEdgeActive,
+		});
+	}, [
+		block.id,
+		targetTop,
+		targetHeight,
+		liveRange,
+		resizeEdgeActive,
+		registerTargets,
+	]);
 
 	const {
 		onBlockPointerDown,
@@ -129,7 +144,6 @@ export function TimeBlock({
 		targetTop,
 		targetHeight,
 		visuals,
-		onGestureVisualChange,
 		onTap: beginEditing,
 		getNeighborTargets,
 		isEditing,
@@ -189,6 +203,7 @@ export function TimeBlock({
 	return (
 		<motion.div
 			className={styles.timeBlock}
+			data-resize-gesture={activeEdge ? "" : undefined}
 			initial={{ opacity: 0 }}
 			animate={{ opacity: 1 }}
 			exit={{ opacity: 0 }}
@@ -209,6 +224,7 @@ export function TimeBlock({
 			<div
 				className={styles.resizeHandle}
 				data-edge="top"
+				data-edge-active={activeEdge === "top" ? "" : undefined}
 				onPointerDown={onTopHandlePointerDown}
 			/>
 
@@ -271,6 +287,7 @@ export function TimeBlock({
 			<div
 				className={styles.resizeHandle}
 				data-edge="bottom"
+				data-edge-active={activeEdge === "bottom" ? "" : undefined}
 				onPointerDown={onBottomHandlePointerDown}
 			/>
 		</motion.div>

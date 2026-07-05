@@ -1,5 +1,5 @@
 import { AnimatePresence, motion } from "motion/react";
-import { formatTimeRange, getTimeLabelSegments } from "@/utils/time";
+import { formatDurationLabel, getDurationLabelSegments } from "@/utils/time";
 import styles from "./AnimatedTimeRange.module.scss";
 
 const TICK_SPRING = {
@@ -28,35 +28,30 @@ function AnimatedSegment({ value }: { value: string }) {
 	);
 }
 
-function TimeLabel({
-	totalMinutes,
-	includePeriod,
+function DurationLabel({
+	durationMinutes,
 	animate,
 }: {
-	totalMinutes: number;
-	includePeriod: boolean;
+	durationMinutes: number;
 	animate: boolean;
 }) {
-	const { hour, minutes, period } = getTimeLabelSegments(
-		totalMinutes,
-		includePeriod,
-	);
+	const { hours, minutes } = getDurationLabelSegments(durationMinutes);
 
 	if (!animate) {
 		return (
 			<>
-				{hour}
+				{hours}
+				{hours && minutes ? " " : null}
 				{minutes}
-				{period}
 			</>
 		);
 	}
 
 	return (
 		<>
-			<AnimatedSegment value={hour} />
+			{hours && <AnimatedSegment value={hours} />}
+			{hours && minutes && <span className={styles.separator}> </span>}
 			{minutes && <AnimatedSegment value={minutes} />}
-			{period && <AnimatedSegment value={period} />}
 		</>
 	);
 }
@@ -74,26 +69,19 @@ export function AnimatedTimeRange({
 	animate = false,
 	className,
 }: AnimatedTimeRangeProps) {
+	const durationMinutes = endMinute - startMinute;
+
 	if (!animate) {
 		return (
 			<span className={[styles.root, className].filter(Boolean).join(" ")}>
-				{formatTimeRange(startMinute, endMinute)}
+				{formatDurationLabel(durationMinutes)}
 			</span>
 		);
 	}
 
-	const startPeriod = Math.floor(startMinute / 60) % 24 < 12 ? "AM" : "PM";
-	const endPeriod = Math.floor(endMinute / 60) % 24 < 12 ? "AM" : "PM";
-
 	return (
 		<span className={[styles.root, className].filter(Boolean).join(" ")}>
-			<TimeLabel
-				totalMinutes={startMinute}
-				includePeriod={startPeriod !== endPeriod}
-				animate
-			/>
-			<span className={styles.separator}> – </span>
-			<TimeLabel totalMinutes={endMinute} includePeriod animate />
+			<DurationLabel durationMinutes={durationMinutes} animate />
 		</span>
 	);
 }

@@ -1,6 +1,5 @@
 import {
 	AnimatePresence,
-	type MotionValue,
 	motion,
 	useMotionValue,
 	useSpring,
@@ -11,6 +10,7 @@ import { AnimatedTimeRange } from "@/components/AnimatedTimeRange/AnimatedTimeRa
 import { NowLine } from "@/components/NowLine";
 import { TimeBlock } from "@/components/TimeBlock";
 import { TimeGrid } from "@/components/TimeGrid";
+import type { BlockGestureTargets } from "@/hooks/useBlockGesture";
 import {
 	BLOCK_GAP,
 	DAY_END_MINUTES,
@@ -91,16 +91,11 @@ export function DayView({ date, onSwipeStart }: DayViewProps) {
 	}, [sorted]);
 
 	// Per-block gesture target registry (ref-based, no re-renders)
-	const targetRegistry = useRef(
-		new Map<
-			string,
-			{ top: MotionValue<number>; height: MotionValue<number> }
-		>(),
-	);
+	const targetRegistry = useRef(new Map<string, BlockGestureTargets>());
 
 	const registerTargets = useCallback(
-		(id: string, top: MotionValue<number>, height: MotionValue<number>) => {
-			targetRegistry.current.set(id, { top, height });
+		(id: string, targets: BlockGestureTargets) => {
+			targetRegistry.current.set(id, targets);
 		},
 		[],
 	);

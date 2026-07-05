@@ -18,7 +18,15 @@
 		opacity: 1;
 	}
 
-	&:hover .resizeHandle::after {
+	&:hover:not([data-resize-gesture]) .resizeHandle::after {
+		opacity: 0.7;
+	}
+
+	&[data-resize-gesture] .resizeHandle::after {
+		opacity: 0;
+	}
+
+	&[data-resize-gesture] .resizeHandle[data-edge-active]::after {
 		opacity: 0.7;
 	}
 }

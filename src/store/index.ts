@@ -2,6 +2,7 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import {
 	DEFAULT_BLOCK_DURATION,
+	LEGACY_V0_PALETTE,
 	PALETTE_SIZE,
 	THEMES,
 	type ThemeId,
@@ -51,7 +52,7 @@ export const useStore = create<RetroState>()(
 			nextColorIndex: 0,
 			isDraggingBlock: false,
 			history: [],
-			theme: "nightLight",
+			theme: "bubblegum",
 			showGridlines: true,
 
 			setTheme: (theme) => set({ theme }),
@@ -129,7 +130,7 @@ export const useStore = create<RetroState>()(
 		}),
 		{
 			name: "retro-storage",
-			version: 2,
+			version: 3,
 			partialize: (state) => ({
 				blocks: state.blocks,
 				nextColorIndex: state.nextColorIndex,
@@ -137,27 +138,42 @@ export const useStore = create<RetroState>()(
 				showGridlines: state.showGridlines,
 			}),
 			migrate: (persisted: unknown, version: number) => {
+				let state = persisted as Record<string, unknown>;
+
 				if (version === 0) {
-					// v0 stored raw hex colors from what is now the autumn palette
-					const legacyPalette: readonly string[] = THEMES.autumn.swatches.map(
-						(s) => s.bg,
-					);
-					const state = persisted as {
+					const legacy = state as {
 						blocks?: Array<Record<string, unknown>>;
 						nextColorIndex?: number;
 					};
-					const blocks = (state.blocks ?? []).map((b) => {
+					const blocks = (legacy.blocks ?? []).map((b) => {
 						if ("color" in b && !("colorIndex" in b)) {
 							const { color, ...rest } = b;
-							const idx = legacyPalette.indexOf(color as string);
-							return { ...rest, colorIndex: idx >= 0 ? idx : 0 };
+							const idx = LEGACY_V0_PALETTE.indexOf(
+								color as (typeof LEGACY_V0_PALETTE)[number],
+							);
+							return { ...rest, colorIndex: idx >= 0 ? idx % PALETTE_SIZE : 0 };
 						}
 						return b;
 					});
-					return { ...state, blocks };
+					state = { ...legacy, blocks };
 				}
-				// v1 -> v2 just adds theme/showGridlines; defaults fill in via merge
-				return persisted;
+
+				if (version <= 2) {
+					const theme = state.theme as string | undefined;
+					if (theme === "nightLight") state.theme = "bubblegum";
+					else if (theme === "autumn") state.theme = "twilight";
+					else if (!theme || !(theme in THEMES)) state.theme = "bubblegum";
+
+					const blocks = (state.blocks as TimeBlock[] | undefined) ?? [];
+					state.blocks = blocks.map((b) => ({
+						...b,
+						colorIndex: b.colorIndex % PALETTE_SIZE,
+					}));
+					state.nextColorIndex =
+						((state.nextColorIndex as number | undefined) ?? 0) % PALETTE_SIZE;
+				}
+
+				return state;
 			},
 		},
 	),
