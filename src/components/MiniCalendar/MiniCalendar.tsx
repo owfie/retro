@@ -1,17 +1,21 @@
 import {
 	addMonths,
+	differenceInCalendarMonths,
 	format,
 	getDay,
 	getDaysInMonth,
+	isSameMonth,
 	startOfMonth,
 } from "date-fns";
+import { motion } from "motion/react";
 import { useEffect, useMemo, useState } from "react";
 import { Chevron } from "@/components/Chevron";
 import { useStore } from "@/store";
 import { formatDateToISO, parseLocalDate } from "@/utils/time";
 import styles from "./MiniCalendar.module.scss";
 
-const MONTH_OFFSETS = [-1, 0, 1];
+const MONTH_WINDOW = 3;
+const PILL_SPRING = { type: "spring", stiffness: 550, damping: 42 } as const;
 
 export function MiniCalendar() {
 	const currentDate = useStore((s) => s.currentDate);
@@ -23,13 +27,25 @@ export function MiniCalendar() {
 		[blocks],
 	);
 
+	// The month shown in the grid; the window of month labels is independent
+	// and only pages via the chevrons or when the viewed month leaves it.
 	const [viewMonth, setViewMonth] = useState(() =>
 		startOfMonth(parseLocalDate(currentDate)),
+	);
+	const [windowStart, setWindowStart] = useState(() =>
+		addMonths(startOfMonth(parseLocalDate(currentDate)), -1),
 	);
 
 	// Follow the selected date's month (e.g. when navigating via the day strip)
 	useEffect(() => {
-		setViewMonth(startOfMonth(parseLocalDate(currentDate)));
+		const month = startOfMonth(parseLocalDate(currentDate));
+		setViewMonth(month);
+		setWindowStart((start) => {
+			const offset = differenceInCalendarMonths(month, start);
+			return offset < 0 || offset >= MONTH_WINDOW
+				? addMonths(month, -1)
+				: start;
+		});
 	}, [currentDate]);
 
 	const daysInMonth = getDaysInMonth(viewMonth);
@@ -42,30 +58,42 @@ export function MiniCalendar() {
 				<button
 					type="button"
 					className={styles.chevron}
-					aria-label="Previous month"
-					onClick={() => setViewMonth((m) => addMonths(m, -1))}
+					aria-label="Previous months"
+					onClick={() =>
+						setWindowStart((start) => addMonths(start, -MONTH_WINDOW))
+					}
 				>
 					<Chevron direction={-1} />
 				</button>
-				{MONTH_OFFSETS.map((offset) => {
-					const month = addMonths(viewMonth, offset);
+				{Array.from({ length: MONTH_WINDOW }, (_, i) => {
+					const month = addMonths(windowStart, i);
+					const isSelected = isSameMonth(month, viewMonth);
 					return (
 						<button
 							key={format(month, "yyyy-MM")}
 							type="button"
 							className={styles.month}
-							data-selected={offset === 0}
+							data-selected={isSelected}
 							onClick={() => setViewMonth(startOfMonth(month))}
 						>
-							{format(month, "MMM")}
+							{isSelected && (
+								<motion.span
+									layoutId="monthPill"
+									className={styles.pill}
+									transition={PILL_SPRING}
+								/>
+							)}
+							<span className={styles.monthText}>{format(month, "MMM")}</span>
 						</button>
 					);
 				})}
 				<button
 					type="button"
 					className={styles.chevron}
-					aria-label="Next month"
-					onClick={() => setViewMonth((m) => addMonths(m, 1))}
+					aria-label="Next months"
+					onClick={() =>
+						setWindowStart((start) => addMonths(start, MONTH_WINDOW))
+					}
 				>
 					<Chevron direction={1} />
 				</button>

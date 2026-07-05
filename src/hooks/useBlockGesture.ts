@@ -42,8 +42,10 @@ interface UseBlockGestureOptions {
 	targetTop: MotionValue<number>;
 	targetHeight: MotionValue<number>;
 	visuals: GestureVisuals;
-	/** Fired when gesture feedback (time badge) should show/hide. */
+	/** Fired when gesture feedback (live time range) should show/hide. */
 	onGestureVisualChange?: (active: boolean) => void;
+	/** Fired when the pointer is released without dragging (click-to-edit). */
+	onTap?: () => void;
 	getNeighborTargets: (
 		id: string,
 	) => { top: MotionValue<number>; height: MotionValue<number> } | undefined;
@@ -59,6 +61,7 @@ export function useBlockGesture({
 	targetHeight,
 	visuals,
 	onGestureVisualChange,
+	onTap,
 	getNeighborTargets,
 	isEditing,
 }: UseBlockGestureOptions) {
@@ -66,12 +69,19 @@ export function useBlockGesture({
 	const updateBlocks = useStore((s) => s.updateBlocks);
 	const setDraggingBlock = useStore((s) => s.setDraggingBlock);
 
-	// ── Drag ──────────────────────────────────────────────
+	// ── Drag to move / tap to edit ───────────────────────
+	// Nothing lifts or commits until real movement: a plain click resolves
+	// to onTap (edit). The day-swipe never fires from a block because the
+	// paginator only arms its drag from empty-grid pointerdowns; isDraggingBlock
+	// is kept as shared "a block gesture is active" state for future use
+	// (horizontal movement is reserved for coming day-to-day dragging).
 
 	const onBlockPointerDown = useCallback(
 		(e: React.PointerEvent) => {
 			if (isEditing) return;
+			if (e.button !== 0) return;
 			e.preventDefault();
+			e.stopPropagation();
 
 			const initialStart = block.startMinute;
 			const duration = block.durationMinutes;
@@ -80,13 +90,17 @@ export function useBlockGesture({
 			let lastSnapped = initialStart;
 
 			setDraggingBlock(true);
-			visuals.lift.set(1);
 
 			startVerticalGesture(e, {
 				onBegin: () => {
+					visuals.lift.set(1);
+					visuals.timeLabel.set(
+						formatTimeRange(initialStart, initialStart + duration),
+					);
 					onGestureVisualChange?.(true);
 				},
-				onUpdate: ({ deltaMinutes }) => {
+				onUpdate: ({ deltaMinutes, began }) => {
+					if (!began) return;
 					const proposed = initialStart + deltaMinutes;
 					currentStart = constrainMove(duration, proposed, siblings);
 
@@ -116,7 +130,12 @@ export function useBlockGesture({
 							: 0,
 					);
 				},
-				onEnd: () => {
+				onEnd: ({ began, cancelled }) => {
+					if (!began) {
+						setDraggingBlock(false);
+						if (!cancelled) onTap?.();
+						return;
+					}
 					const clamped = Math.max(
 						0,
 						Math.min(maxStart, snapMinutes(currentStart)),
@@ -137,6 +156,7 @@ export function useBlockGesture({
 			targetTop,
 			visuals,
 			onGestureVisualChange,
+			onTap,
 			updateBlock,
 			setDraggingBlock,
 		],
@@ -179,7 +199,8 @@ export function useBlockGesture({
 				onBegin: () => {
 					onGestureVisualChange?.(true);
 				},
-				onUpdate: ({ deltaMinutes }) => {
+				onUpdate: ({ deltaMinutes, began }) => {
+					if (!began) return;
 					const proposedDuration = initialDuration + deltaMinutes;
 
 					if (isShared) {
@@ -220,7 +241,11 @@ export function useBlockGesture({
 							leanPx(currentDuration - snappedDuration),
 					);
 				},
-				onEnd: () => {
+				onEnd: ({ began }) => {
+					if (!began) {
+						setDraggingBlock(false);
+						return;
+					}
 					const snappedDuration = Math.max(
 						SNAP_MINUTES,
 						snapMinutes(currentDuration),
@@ -302,7 +327,8 @@ export function useBlockGesture({
 				onBegin: () => {
 					onGestureVisualChange?.(true);
 				},
-				onUpdate: ({ deltaMinutes }) => {
+				onUpdate: ({ deltaMinutes, began }) => {
+					if (!began) return;
 					const proposedStart = initialStart + deltaMinutes;
 
 					if (isShared) {
@@ -338,7 +364,11 @@ export function useBlockGesture({
 					targetTop.set(finalStart * MINUTE_HEIGHT + lean);
 					targetHeight.set(snappedDur * MINUTE_HEIGHT - lean);
 				},
-				onEnd: () => {
+				onEnd: ({ began }) => {
+					if (!began) {
+						setDraggingBlock(false);
+						return;
+					}
 					const snappedDuration = Math.max(
 						SNAP_MINUTES,
 						blockEnd - snapMinutes(currentStart),

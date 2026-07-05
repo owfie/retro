@@ -12,7 +12,6 @@ import { TimeGrid } from "@/components/TimeGrid";
 import {
 	BLOCK_GAP,
 	DAY_END_MINUTES,
-	DEFAULT_BLOCK_DURATION,
 	DEFAULT_VIEW_START,
 	FOLLOW_SPRING,
 	MINUTE_HEIGHT,
@@ -25,7 +24,6 @@ import { useThemePalette } from "@/hooks/useThemePalette";
 import { useStore } from "@/store";
 import type { TimeBlock as TimeBlockType } from "@/types";
 import { startVerticalGesture } from "@/utils/gesture";
-import { findNearestGap } from "@/utils/overlap";
 import {
 	formatDateToISO,
 	formatTimeRange,
@@ -35,9 +33,11 @@ import styles from "./DayView.module.scss";
 
 interface DayViewProps {
 	date: string;
+	/** Arms the day-swipe drag; only called for empty-grid pointerdowns. */
+	onSwipeStart?: (e: React.PointerEvent) => void;
 }
 
-export function DayView({ date }: DayViewProps) {
+export function DayView({ date, onSwipeStart }: DayViewProps) {
 	const blocks = useStore(
 		useShallow((s) => s.blocks.filter((b) => b.date === date)),
 	);
@@ -45,7 +45,6 @@ export function DayView({ date }: DayViewProps) {
 	const setDraggingBlock = useStore((s) => s.setDraggingBlock);
 	const scrollRef = useRef<HTMLDivElement>(null);
 	const [newBlockId, setNewBlockId] = useState<string | null>(null);
-	const skipNextClickRef = useRef(false);
 
 	const palette = useThemePalette();
 
@@ -124,14 +123,22 @@ export function DayView({ date }: DayViewProps) {
 		}
 	}, [date]);
 
-	const handleEditEnd = useCallback(() => {
-		skipNextClickRef.current = true;
-	}, []);
-
-	// Click to create a default block; drag vertically to size it while creating
+	// Pointerdown on empty grid shows the snapped 15-min draft slot right away,
+	// so the creation origin is always visible. Release commits it (a plain
+	// click creates the slot); dragging vertically grows it within the free
+	// gap; horizontal intent aborts and yields to the day-swipe gesture.
 	const handleGridPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
 		if (e.target !== e.currentTarget) return;
 		if (e.button !== 0) return;
+
+		// A click that ends a label edit should only blur the input,
+		// not simultaneously create a new block.
+		const active = document.activeElement;
+		if (active instanceof HTMLInputElement) return;
+
+		// Arm the horizontal day-swipe. Vertical intent grows the draft below;
+		// dragDirectionLock keeps the swipe from translating in that case.
+		onSwipeStart?.(e);
 
 		const container = e.currentTarget;
 		const rect = container.getBoundingClientRect();
@@ -155,10 +162,22 @@ export function DayView({ date }: DayViewProps) {
 				gapHi = Math.min(gapHi, b.startMinute);
 			else anchorFree = false;
 		}
+		if (!anchorFree) return;
 
 		let dragStart = anchorMinute;
 		let dragEnd = anchorEnd;
-		let creating = false;
+
+		// Show the anchor slot immediately. Jump the spring followers too:
+		// jumping only the source targets makes the followers *animate* from
+		// their stale position (the previous draft), not render in place.
+		const anchorTopPx = anchorMinute * MINUTE_HEIGHT;
+		const anchorHeightPx = SNAP_PX - BLOCK_GAP;
+		setDraftSwatch(palette[useStore.getState().nextColorIndex]);
+		draftTopTarget.jump(anchorTopPx);
+		draftHeightTarget.jump(anchorHeightPx);
+		draftTop.jump(anchorTopPx);
+		draftHeight.jump(anchorHeightPx);
+		setDraftRange(formatTimeRange(dragStart, dragEnd));
 
 		const updateDraft = (clientY: number) => {
 			const y = clientY - container.getBoundingClientRect().top;
@@ -188,44 +207,19 @@ export function DayView({ date }: DayViewProps) {
 		};
 
 		startVerticalGesture(e, {
-			// Horizontal intent (day swipe) or occupied slot: leave it alone
-			shouldBegin: (dx, dy) => dy >= dx && anchorFree,
-			onBegin: () => {
-				creating = true;
-				setDraggingBlock(true);
-				setDraftSwatch(palette[useStore.getState().nextColorIndex]);
-				// Start the draft at the anchor slot without animating from 0
-				draftTopTarget.jump(anchorMinute * MINUTE_HEIGHT);
-				draftHeightTarget.jump(SNAP_PX - BLOCK_GAP);
+			// Horizontal intent means a day swipe: hand the pointer back
+			shouldBegin: (dx, dy) => dy >= dx,
+			onBegin: () => setDraggingBlock(true),
+			onUpdate: ({ clientY, began }) => {
+				if (began) updateDraft(clientY);
 			},
-			onUpdate: ({ clientY }) => {
-				if (creating) updateDraft(clientY);
-			},
-			onEnd: ({ cancelled }) => {
-				if (creating) {
-					setDraggingBlock(false);
-					setDraftSwatch(null);
-					if (!cancelled) {
-						const id = addBlock(date, dragStart, dragEnd - dragStart);
-						setNewBlockId(id);
-					}
-					return;
-				}
+			onAbort: () => setDraftSwatch(null),
+			onEnd: ({ began, cancelled }) => {
+				if (began) setDraggingBlock(false);
+				setDraftSwatch(null);
 				if (cancelled) return;
-				// Plain click
-				if (skipNextClickRef.current) {
-					skipNextClickRef.current = false;
-					return;
-				}
-				const validStart = findNearestGap(
-					anchorMinute,
-					DEFAULT_BLOCK_DURATION,
-					sorted,
-				);
-				if (validStart != null) {
-					const id = addBlock(date, validStart);
-					setNewBlockId(id);
-				}
+				const id = addBlock(date, dragStart, dragEnd - dragStart);
+				setNewBlockId(id);
 			},
 		});
 	};
@@ -274,7 +268,6 @@ export function DayView({ date }: DayViewProps) {
 							neighborAbove={adj?.above ?? null}
 							neighborBelow={adj?.below ?? null}
 							siblings={sorted.filter((b) => b.id !== block.id)}
-							onEditEnd={handleEditEnd}
 							registerTargets={registerTargets}
 							getNeighborTargets={getNeighborTargets}
 						/>

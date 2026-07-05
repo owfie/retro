@@ -21,10 +21,6 @@
 	&:hover .resizeHandle::after {
 		opacity: 0.7;
 	}
-
-	&:hover .timeBadge {
-		opacity: 1;
-	}
 }
 
 .resizeHandle {
@@ -49,9 +45,9 @@
 		position: absolute;
 		left: 50%;
 		transform: translateX(-50%);
-		width: 16px;
-		height: 1px;
-		border-radius: 1px;
+		width: 22px;
+		height: 2px;
+		border-radius: 2px;
 		background: currentColor;
 		opacity: 0;
 		transition: opacity 0.15s;
@@ -67,53 +63,55 @@
 	}
 }
 
-.timeBadge {
-	position: absolute;
-	left: 0;
-	bottom: calc(100% + 4px);
-	padding: 2px 6px;
-	border-radius: 4px;
-	background: #2f2a25;
-	color: #fff;
-	font-size: 10px;
-	font-weight: 600;
-	font-variant-numeric: tabular-nums;
-	line-height: 1.4;
-	white-space: nowrap;
-	pointer-events: none;
-	user-select: none;
-	opacity: 0;
-	transition: opacity 0.12s;
-	z-index: 5;
-
-	&[data-visible="true"] {
-		opacity: 1;
-	}
-}
-
 .blockContent {
 	display: flex;
-	align-items: flex-start;
-	padding: 4px 6px;
+	flex-direction: column;
+	align-items: stretch;
+	gap: 1px;
+	padding: 5px 8px;
 	min-height: 0;
 	flex: 1;
 	height: 100%;
+	overflow: hidden;
+
+	// 15-min blocks only fit one line: time and label share a row
+	&[data-compact="true"] {
+		flex-direction: row;
+		align-items: center;
+		gap: 8px;
+	}
+}
+
+.blockTime {
+	font-size: 10px;
+	font-weight: 500;
+	font-variant-numeric: tabular-nums;
+	opacity: 0.75;
+	white-space: nowrap;
+	flex-shrink: 0;
+	line-height: 1.4;
 }
 
 .blockInput {
 	flex: 1;
 	font-size: 12px;
+	font-weight: 600;
 	min-width: 0;
 	cursor: text;
 	color: inherit;
+	-webkit-user-select: text;
+	user-select: text;
 }
 
 .blockLabel {
 	flex: 1;
+	min-width: 0;
 	font-size: 12px;
+	font-weight: 600;
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
+	cursor: text;
 }
 
 .deleteButton {
@@ -128,6 +126,7 @@
 	font-size: 14px;
 	border-radius: 2px;
 	opacity: 0;
+	cursor: pointer;
 	transition: opacity 0.15s;
 	color: inherit;
 

@@ -1,5 +1,5 @@
 import { addDays } from "date-fns";
-import { AnimatePresence, motion } from "motion/react";
+import { AnimatePresence, motion, useDragControls } from "motion/react";
 import { useRef } from "react";
 import { DayStrip } from "@/components/DayStrip";
 import { DayView } from "@/components/DayView";
@@ -22,8 +22,13 @@ const variants = {
 export function DayPaginator() {
 	const currentDate = useStore((s) => s.currentDate);
 	const setCurrentDate = useStore((s) => s.setCurrentDate);
-	const isDraggingBlock = useStore((s) => s.isDraggingBlock);
 	const dirRef = useRef(0);
+	// Manual drag: the swipe is only ever started from the empty grid (see
+	// DayView.onSwipeStart), so block/resize/grab pointerdowns can never page
+	// the view. Motion auto-listening would start the pan as the pointerdown
+	// bubbled up from a block, which no amount of stopPropagation reliably
+	// prevents (it attaches native listeners on the wrapper).
+	const dragControls = useDragControls();
 
 	const navigate = (delta: number) => {
 		dirRef.current = delta;
@@ -75,7 +80,9 @@ export function DayPaginator() {
 							damping: 30,
 						}}
 						className={styles.dayWrapper}
-						drag={isDraggingBlock ? false : "x"}
+						drag="x"
+						dragListener={false}
+						dragControls={dragControls}
 						dragDirectionLock
 						dragConstraints={{ left: 0, right: 0 }}
 						dragElastic={0.2}
@@ -84,7 +91,10 @@ export function DayPaginator() {
 							else if (info.offset.x < -80) navigate(1);
 						}}
 					>
-						<DayView date={currentDate} />
+						<DayView
+							date={currentDate}
+							onSwipeStart={(e) => dragControls.start(e)}
+						/>
 					</motion.div>
 				</AnimatePresence>
 			</div>

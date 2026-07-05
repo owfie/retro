@@ -25,7 +25,6 @@ interface TimeBlockProps {
 	block: TimeBlockType;
 	autoFocus?: boolean;
 	onFocused?: () => void;
-	onEditEnd?: () => void;
 	neighborAbove: TimeBlockType | null;
 	neighborBelow: TimeBlockType | null;
 	siblings: TimeBlockType[];
@@ -43,7 +42,6 @@ export function TimeBlock({
 	block,
 	autoFocus,
 	onFocused,
-	onEditEnd,
 	neighborAbove,
 	neighborBelow,
 	siblings,
@@ -81,7 +79,7 @@ export function TimeBlock({
 		[liftTarget, squishTarget, timeLabel],
 	);
 
-	// Live badge text + visibility during gestures (updates only on snap changes)
+	// Live in-block time text during gestures (updates only on snap changes)
 	const [gestureVisual, setGestureVisual] = useState(false);
 	const [liveRange, setLiveRange] = useState("");
 	useMotionValueEvent(timeLabel, "change", (v) => setLiveRange(v));
@@ -89,6 +87,11 @@ export function TimeBlock({
 		(active: boolean) => setGestureVisual(active),
 		[],
 	);
+
+	const beginEditing = useCallback(() => {
+		setIsEditing(true);
+		setTimeout(() => inputRef.current?.focus(), 0);
+	}, []);
 
 	const visualHeight = useTransform(height, (h) => h - BLOCK_GAP);
 
@@ -123,6 +126,7 @@ export function TimeBlock({
 		targetHeight,
 		visuals,
 		onGestureVisualChange,
+		onTap: beginEditing,
 		getNeighborTargets,
 		isEditing,
 	});
@@ -137,11 +141,10 @@ export function TimeBlock({
 	// Auto-focus newly created blocks
 	useEffect(() => {
 		if (autoFocus) {
-			setIsEditing(true);
-			setTimeout(() => inputRef.current?.focus(), 0);
+			beginEditing();
 			onFocused?.();
 		}
-	}, [autoFocus, onFocused]);
+	}, [autoFocus, onFocused, beginEditing]);
 
 	// Sync local label with store
 	useEffect(() => {
@@ -159,7 +162,6 @@ export function TimeBlock({
 			updateBlock(block.id, { label: localLabel });
 		}
 		setIsEditing(false);
-		onEditEnd?.();
 	};
 
 	const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -172,7 +174,6 @@ export function TimeBlock({
 			escapedRef.current = true;
 			setLocalLabel(block.label);
 			setIsEditing(false);
-			onEditEnd?.();
 			inputRef.current?.blur();
 		}
 	};
@@ -199,12 +200,6 @@ export function TimeBlock({
 				color: swatch.text,
 			}}
 			onPointerDown={isEditing ? undefined : onBlockPointerDown}
-			onTap={() => {
-				if (!isEditing) {
-					setIsEditing(true);
-					setTimeout(() => inputRef.current?.focus(), 0);
-				}
-			}}
 		>
 			{/* Top resize handle */}
 			<div
@@ -213,15 +208,14 @@ export function TimeBlock({
 				onPointerDown={onTopHandlePointerDown}
 			/>
 
-			{/* Gutter time badge: live range during gestures, static on hover */}
-			<div className={styles.timeBadge} data-visible={gestureVisual}>
-				{gestureVisual && liveRange ? liveRange : staticRange}
-			</div>
-
 			<motion.div
 				className={styles.blockContent}
+				data-compact={block.durationMinutes < 30}
 				style={{ scaleY: contentScaleY }}
 			>
+				<span className={styles.blockTime}>
+					{gestureVisual && liveRange ? liveRange : staticRange}
+				</span>
 				{isEditing ? (
 					<input
 						ref={inputRef}

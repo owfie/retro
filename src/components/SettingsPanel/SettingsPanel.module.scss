@@ -17,6 +17,7 @@
 }
 
 .themeRow {
+	cursor: pointer;
 	transition: background 0.12s;
 
 	&:hover {
@@ -51,6 +52,7 @@
 	height: 20px;
 	border-radius: 999px;
 	background: #e4e2de;
+	cursor: pointer;
 	transition: background 0.15s;
 	flex-shrink: 0;
 

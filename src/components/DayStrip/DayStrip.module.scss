@@ -13,6 +13,7 @@
 	height: 28px;
 	border-radius: 9px;
 	color: #c3beb6;
+	cursor: pointer;
 	transition: background 0.12s, color 0.12s;
 
 	&:hover {
@@ -22,6 +23,7 @@
 }
 
 .day {
+	position: relative;
 	padding: 6px 13px;
 	border-radius: 10px;
 	font-size: 14px;
@@ -29,21 +31,28 @@
 	color: #b3aea6;
 	white-space: nowrap;
 	user-select: none;
-	transition: background 0.12s, color 0.12s;
+	cursor: pointer;
+	transition: background 0.12s, color 0.15s;
 
-	&:hover {
+	&:not([data-selected="true"]):hover {
 		background: #f1efec;
 		color: #6f6a63;
 	}
 
 	&[data-selected="true"] {
-		background: #26221e;
 		color: #fff;
 		font-weight: 600;
-
-		&:hover {
-			background: #26221e;
-			color: #fff;
-		}
 	}
+}
+
+.pill {
+	position: absolute;
+	inset: 0;
+	border-radius: 10px;
+	background: #26221e;
+}
+
+.dayText {
+	position: relative;
+	z-index: 1;
 }

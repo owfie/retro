@@ -17,6 +17,7 @@
 	height: 26px;
 	border-radius: 8px;
 	color: #c3beb6;
+	cursor: pointer;
 	transition: background 0.12s, color 0.12s;
 
 	&:hover {
@@ -26,28 +27,36 @@
 }
 
 .month {
+	position: relative;
 	padding: 5px 12px;
 	border-radius: 9px;
 	font-size: 13px;
 	font-weight: 500;
 	color: #b3aea6;
-	transition: background 0.12s, color 0.12s;
+	cursor: pointer;
+	transition: background 0.12s, color 0.15s;
 
-	&:hover {
+	&:not([data-selected="true"]):hover {
 		background: #f1efec;
 		color: #6f6a63;
 	}
 
 	&[data-selected="true"] {
-		background: #26221e;
 		color: #fff;
 		font-weight: 600;
-
-		&:hover {
-			background: #26221e;
-			color: #fff;
-		}
 	}
+}
+
+.pill {
+	position: absolute;
+	inset: 0;
+	border-radius: 9px;
+	background: #26221e;
+}
+
+.monthText {
+	position: relative;
+	z-index: 1;
 }
 
 .grid {
@@ -66,6 +75,7 @@
 	border-radius: 8px;
 	font-size: 13px;
 	color: #cbc6bf; // days without entries read as faded
+	cursor: pointer;
 	transition: background 0.12s, color 0.12s;
 
 	&[data-has-entries="true"] {

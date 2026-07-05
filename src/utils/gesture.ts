@@ -79,9 +79,14 @@ function createAutoScroller(scrollEl: HTMLElement | null, onStep: () => void) {
 }
 
 /**
- * Shared plumbing for vertical drag gestures: pointer capture, tap threshold,
- * scroll-compensated deltas, edge auto-scroll, and listener cleanup.
- * Callers receive minute-space deltas and map them to their own targets.
+ * Shared plumbing for vertical drag gestures: tap threshold, scroll-compensated
+ * deltas, edge auto-scroll, and listener cleanup. Callers receive minute-space
+ * deltas and map them to their own targets.
+ *
+ * Listeners live on `window` and filter by pointerId, so the gesture keeps
+ * tracking even if pointer capture is unavailable or flaky (Safari) or the
+ * pointer leaves the originating element. Capture is still requested as an
+ * enhancement: it suppresses hover states elsewhere during the drag.
  */
 export function startVerticalGesture(
 	e: React.PointerEvent,
@@ -95,7 +100,12 @@ export function startVerticalGesture(
 	}: VerticalGestureHandlers,
 ) {
 	const el = e.currentTarget as HTMLElement;
-	el.setPointerCapture(e.pointerId);
+	const pointerId = e.pointerId;
+	try {
+		el.setPointerCapture(pointerId);
+	} catch {
+		// Capture is a nice-to-have; window listeners carry the gesture.
+	}
 
 	const scrollEl = el.closest<HTMLElement>("[data-scroll-container]");
 	const startScrollTop = scrollEl?.scrollTop ?? 0;
@@ -116,13 +126,19 @@ export function startVerticalGesture(
 	const scroller = createAutoScroller(scrollEl, () => onUpdate?.(readState()));
 
 	const cleanup = () => {
-		el.removeEventListener("pointermove", onMove);
-		el.removeEventListener("pointerup", onUp);
-		el.removeEventListener("pointercancel", onCancel);
+		window.removeEventListener("pointermove", onMove);
+		window.removeEventListener("pointerup", onUp);
+		window.removeEventListener("pointercancel", onCancel);
 		scroller.stop();
+		try {
+			el.releasePointerCapture(pointerId);
+		} catch {
+			// Already released or never captured.
+		}
 	};
 
 	const onMove = (ev: PointerEvent) => {
+		if (ev.pointerId !== pointerId) return;
 		lastClientY = ev.clientY;
 		if (!began) {
 			const dx = Math.abs(ev.clientX - startX);
@@ -146,10 +162,16 @@ export function startVerticalGesture(
 		onEnd({ ...readState(), cancelled });
 	};
 
-	const onUp = () => finish(false);
-	const onCancel = () => finish(true);
+	const onUp = (ev: PointerEvent) => {
+		if (ev.pointerId !== pointerId) return;
+		finish(false);
+	};
+	const onCancel = (ev: PointerEvent) => {
+		if (ev.pointerId !== pointerId) return;
+		finish(true);
+	};
 
-	el.addEventListener("pointermove", onMove);
-	el.addEventListener("pointerup", onUp);
-	el.addEventListener("pointercancel", onCancel);
+	window.addEventListener("pointermove", onMove);
+	window.addEventListener("pointerup", onUp);
+	window.addEventListener("pointercancel", onCancel);
 }
