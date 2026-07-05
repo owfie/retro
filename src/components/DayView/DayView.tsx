@@ -44,6 +44,7 @@ export function DayView({ date, onSwipeStart }: DayViewProps) {
 	);
 	const addBlock = useStore((s) => s.addBlock);
 	const setDraggingBlock = useStore((s) => s.setDraggingBlock);
+	const setDraftBlockPreview = useStore((s) => s.setDraftBlockPreview);
 	const scrollRef = useRef<HTMLDivElement>(null);
 	const [newBlockId, setNewBlockId] = useState<string | null>(null);
 
@@ -175,12 +176,19 @@ export function DayView({ date, onSwipeStart }: DayViewProps) {
 		// their stale position (the previous draft), not render in place.
 		const anchorTopPx = anchorMinute * MINUTE_HEIGHT;
 		const anchorHeightPx = SNAP_PX - BLOCK_GAP;
-		setDraftSwatch(palette[useStore.getState().nextColorIndex]);
+		const colorIndex = useStore.getState().nextColorIndex;
+		setDraftSwatch(palette[colorIndex]);
 		draftTopTarget.jump(anchorTopPx);
 		draftHeightTarget.jump(anchorHeightPx);
 		draftTop.jump(anchorTopPx);
 		draftHeight.jump(anchorHeightPx);
 		setDraftTimes({ start: dragStart, end: dragEnd });
+		setDraftBlockPreview({
+			date,
+			startMinute: dragStart,
+			durationMinutes: dragEnd - dragStart,
+			colorIndex,
+		});
 
 		const updateDraft = (clientY: number) => {
 			const y = clientY - container.getBoundingClientRect().top;
@@ -207,6 +215,12 @@ export function DayView({ date, onSwipeStart }: DayViewProps) {
 			draftTopTarget.set(dragStart * MINUTE_HEIGHT);
 			draftHeightTarget.set((dragEnd - dragStart) * MINUTE_HEIGHT - BLOCK_GAP);
 			setDraftTimes({ start: dragStart, end: dragEnd });
+			setDraftBlockPreview({
+				date,
+				startMinute: dragStart,
+				durationMinutes: dragEnd - dragStart,
+				colorIndex,
+			});
 		};
 
 		startVerticalGesture(e, {
@@ -219,11 +233,13 @@ export function DayView({ date, onSwipeStart }: DayViewProps) {
 			onAbort: () => {
 				setDraftSwatch(null);
 				setDraftTimes(null);
+				setDraftBlockPreview(null);
 			},
 			onEnd: ({ began, cancelled }) => {
 				if (began) setDraggingBlock(false);
 				setDraftSwatch(null);
 				setDraftTimes(null);
+				setDraftBlockPreview(null);
 				if (cancelled) return;
 				const id = addBlock(date, dragStart, dragEnd - dragStart);
 				setNewBlockId(id);

@@ -113,6 +113,26 @@ export const THEMES = {
 			swatch("#FFDD6C"),
 		],
 	},
+	terracotta: {
+		name: "Terracotta",
+		swatches: [
+			swatch("#ecc8af"),
+			swatch("#e7ad99"),
+			swatch("#ce796b"),
+			swatch("#c18c5d"),
+			swatch("#495867"),
+		],
+	},
+	sunset: {
+		name: "Sunset",
+		swatches: [
+			swatch("#f7b267"),
+			swatch("#f79d65"),
+			swatch("#f4845f"),
+			swatch("#f27059"),
+			swatch("#f25c54"),
+		],
+	},
 } as const satisfies Record<string, Theme>;
 
 export type ThemeId = keyof typeof THEMES;

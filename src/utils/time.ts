@@ -52,6 +52,42 @@ export function formatDurationLabel(totalMinutes: number): string {
 	return hours ?? minutes ?? "0m";
 }
 
+export function formatTotalHoursLabel(totalMinutes: number): string {
+	const { value, suffix } = getTotalHoursLabelSegments(totalMinutes);
+	return `${value}${suffix}`;
+}
+
+export interface TotalHoursLabelSegments {
+	value: string;
+	suffix: string;
+}
+
+export function getTotalHoursLabelSegments(
+	totalMinutes: number,
+): TotalHoursLabelSegments {
+	if (totalMinutes < 60) {
+		return { value: String(totalMinutes), suffix: " minutes" };
+	}
+	const hours = totalMinutes / 60;
+	const rounded = Number.isInteger(hours) ? hours : Math.round(hours * 10) / 10;
+	return {
+		value: String(rounded),
+		suffix: rounded === 1 ? " hour" : " hours",
+	};
+}
+
+export interface ItemCountLabelSegments {
+	value: string;
+	suffix: string;
+}
+
+export function getItemCountLabelSegments(count: number): ItemCountLabelSegments {
+	return {
+		value: String(count),
+		suffix: count === 1 ? " item" : " items",
+	};
+}
+
 export function parseLocalDate(iso: string): Date {
 	const [y, m, d] = iso.split("-").map(Number);
 	return new Date(y, m - 1, d);

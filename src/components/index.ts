@@ -1,5 +1,6 @@
 export { Chevron } from "./Chevron";
 export { DayPaginator } from "./DayPaginator";
+export { DaySummaryVisualizer } from "./DaySummaryVisualizer";
 export { DayStrip } from "./DayStrip";
 export { DayView } from "./DayView";
 export { MiniCalendar } from "./MiniCalendar";

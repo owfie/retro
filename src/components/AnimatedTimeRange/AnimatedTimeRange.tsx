@@ -9,7 +9,7 @@ const TICK_SPRING = {
 	mass: 0.55,
 };
 
-function AnimatedSegment({ value }: { value: string }) {
+export function AnimatedSegment({ value }: { value: string }) {
 	return (
 		<span className={styles.segment}>
 			<AnimatePresence mode="popLayout" initial={false}>

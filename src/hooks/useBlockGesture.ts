@@ -8,7 +8,7 @@ import {
 	SNAP_MINUTES,
 	SQUISH_PER_PX,
 } from "@/constants";
-import { useStore } from "@/store";
+import { useStore, type BlockLivePreview } from "@/store";
 import type { TimeBlock } from "@/types";
 import { startVerticalGesture } from "@/utils/gesture";
 import {
@@ -19,6 +19,13 @@ import {
 import { snapMinutes } from "@/utils/time";
 
 export type LiveTimeRange = { start: number; end: number };
+
+function liveRangeToPreview(range: LiveTimeRange): BlockLivePreview {
+	return {
+		startMinute: range.start,
+		durationMinutes: range.end - range.start,
+	};
+}
 
 /**
  * Target motion values for gesture feedback. These are set synchronously by
@@ -75,6 +82,14 @@ export function useBlockGesture({
 	const updateBlock = useStore((s) => s.updateBlock);
 	const updateBlocks = useStore((s) => s.updateBlocks);
 	const setDraggingBlock = useStore((s) => s.setDraggingBlock);
+	const setBlockLivePreview = useStore((s) => s.setBlockLivePreview);
+
+	const syncLivePreview = useCallback(
+		(id: string, range: LiveTimeRange | null) => {
+			setBlockLivePreview(id, range ? liveRangeToPreview(range) : null);
+		},
+		[setBlockLivePreview],
+	);
 
 	// ── Drag to move / tap to edit ───────────────────────
 	// Nothing lifts or commits until real movement: a plain click resolves
@@ -206,17 +221,21 @@ export function useBlockGesture({
 
 			startVerticalGesture(e, {
 				onBegin: () => {
-					visuals.liveRange.set({
+					const initialRange = {
 						start: block.startMinute,
 						end: block.startMinute + initialDuration,
-					});
+					};
+					visuals.liveRange.set(initialRange);
+					syncLivePreview(block.id, initialRange);
 					visuals.resizeEdgeActive.set("bottom");
-					if (neighborTargets) {
+					if (neighborTargets && neighborBelow) {
 						neighborTargets.resizeEdgeActive.set("top");
-						neighborTargets.liveRange.set({
+						const neighborRange = {
 							start: block.startMinute + initialDuration,
 							end: blockEnd + neighborInitialDuration,
-						});
+						};
+						neighborTargets.liveRange.set(neighborRange);
+						syncLivePreview(neighborBelow.id, neighborRange);
 					}
 				},
 				onUpdate: ({ deltaMinutes, began }) => {
@@ -248,7 +267,7 @@ export function useBlockGesture({
 
 					targetHeight.set(borderPx - block.startMinute * MINUTE_HEIGHT);
 
-					if (neighborTargets) {
+					if (neighborTargets && neighborBelow) {
 						const neighborEnd = blockEnd + neighborInitialDuration;
 						neighborTargets.top.set(borderPx);
 						neighborTargets.height.set(
@@ -257,21 +276,27 @@ export function useBlockGesture({
 						if (snappedDuration !== lastSnapped) {
 							lastSnapped = snappedDuration;
 							const neighborStart = block.startMinute + snappedDuration;
-							neighborTargets.liveRange.set({
+							const neighborRange = {
 								start: neighborStart,
 								end: neighborEnd,
-							});
-							visuals.liveRange.set({
+							};
+							const blockRange = {
 								start: block.startMinute,
 								end: neighborStart,
-							});
+							};
+							neighborTargets.liveRange.set(neighborRange);
+							visuals.liveRange.set(blockRange);
+							syncLivePreview(neighborBelow.id, neighborRange);
+							syncLivePreview(block.id, blockRange);
 						}
 					} else if (snappedDuration !== lastSnapped) {
 						lastSnapped = snappedDuration;
-						visuals.liveRange.set({
+						const blockRange = {
 							start: block.startMinute,
 							end: block.startMinute + snappedDuration,
-						});
+						};
+						visuals.liveRange.set(blockRange);
+						syncLivePreview(block.id, blockRange);
 					}
 				},
 				onEnd: ({ began }) => {
@@ -285,9 +310,11 @@ export function useBlockGesture({
 					);
 					targetHeight.set(snappedDuration * MINUTE_HEIGHT);
 					visuals.liveRange.set(null);
+					syncLivePreview(block.id, null);
 					visuals.resizeEdgeActive.set(null);
 					neighborTargets?.resizeEdgeActive.set(null);
 					neighborTargets?.liveRange.set(null);
+					if (neighborBelow) syncLivePreview(neighborBelow.id, null);
 
 					if (isShared) {
 						const neighbor = neighborFor(snappedDuration);
@@ -331,6 +358,7 @@ export function useBlockGesture({
 			updateBlock,
 			updateBlocks,
 			setDraggingBlock,
+			syncLivePreview,
 		],
 	);
 
@@ -360,17 +388,21 @@ export function useBlockGesture({
 
 			startVerticalGesture(e, {
 				onBegin: () => {
-					visuals.liveRange.set({
+					const blockRange = {
 						start: initialStart,
 						end: blockEnd,
-					});
+					};
+					visuals.liveRange.set(blockRange);
+					syncLivePreview(block.id, blockRange);
 					visuals.resizeEdgeActive.set("top");
-					if (neighborTargets) {
+					if (neighborTargets && neighborAbove) {
 						neighborTargets.resizeEdgeActive.set("bottom");
-						neighborTargets.liveRange.set({
+						const neighborRange = {
 							start: neighborStart,
 							end: initialStart,
-						});
+						};
+						neighborTargets.liveRange.set(neighborRange);
+						syncLivePreview(neighborAbove.id, neighborRange);
 					}
 				},
 				onUpdate: ({ deltaMinutes, began }) => {
@@ -403,21 +435,27 @@ export function useBlockGesture({
 					targetTop.set(borderPx);
 					targetHeight.set(blockEnd * MINUTE_HEIGHT - borderPx);
 
-					if (neighborTargets) {
+					if (neighborTargets && neighborAbove) {
 						neighborTargets.height.set(
 							borderPx - neighborStart * MINUTE_HEIGHT,
 						);
 						if (finalStart !== lastFinalStart) {
 							lastFinalStart = finalStart;
-							neighborTargets.liveRange.set({
+							const neighborRange = {
 								start: neighborStart,
 								end: finalStart,
-							});
-							visuals.liveRange.set({ start: finalStart, end: blockEnd });
+							};
+							const blockRange = { start: finalStart, end: blockEnd };
+							neighborTargets.liveRange.set(neighborRange);
+							visuals.liveRange.set(blockRange);
+							syncLivePreview(neighborAbove.id, neighborRange);
+							syncLivePreview(block.id, blockRange);
 						}
 					} else if (finalStart !== lastFinalStart) {
 						lastFinalStart = finalStart;
-						visuals.liveRange.set({ start: finalStart, end: blockEnd });
+						const blockRange = { start: finalStart, end: blockEnd };
+						visuals.liveRange.set(blockRange);
+						syncLivePreview(block.id, blockRange);
 					}
 				},
 				onEnd: ({ began }) => {
@@ -433,9 +471,11 @@ export function useBlockGesture({
 					targetTop.set(finalStart * MINUTE_HEIGHT);
 					targetHeight.set(snappedDuration * MINUTE_HEIGHT);
 					visuals.liveRange.set(null);
+					syncLivePreview(block.id, null);
 					visuals.resizeEdgeActive.set(null);
 					neighborTargets?.resizeEdgeActive.set(null);
 					neighborTargets?.liveRange.set(null);
+					if (neighborAbove) syncLivePreview(neighborAbove.id, null);
 
 					if (isShared) {
 						const snappedNeighborDuration = Math.max(
@@ -479,6 +519,7 @@ export function useBlockGesture({
 			updateBlock,
 			updateBlocks,
 			setDraggingBlock,
+			syncLivePreview,
 		],
 	);
 

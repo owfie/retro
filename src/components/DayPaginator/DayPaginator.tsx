@@ -2,6 +2,7 @@ import { addDays } from "date-fns";
 import { AnimatePresence, motion, useDragControls } from "motion/react";
 import { useRef } from "react";
 import { DayStrip } from "@/components/DayStrip";
+import { DaySummaryVisualizer } from "@/components/DaySummaryVisualizer";
 import { DayView } from "@/components/DayView";
 import { useStore } from "@/store";
 import { formatDateToISO, parseLocalDate } from "@/utils/time";
@@ -98,6 +99,7 @@ export function DayPaginator() {
 					</motion.div>
 				</AnimatePresence>
 			</div>
+			<DaySummaryVisualizer date={currentDate} />
 		</div>
 	);
 }

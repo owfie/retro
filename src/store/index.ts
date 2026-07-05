@@ -12,11 +12,27 @@ import { formatDateToISO } from "@/utils/time";
 
 const HISTORY_LIMIT = 50;
 
+/** Ephemeral preview while resizing a block; not persisted. */
+export interface BlockLivePreview {
+	startMinute: number;
+	durationMinutes: number;
+}
+
+/** Ephemeral preview while drag-creating a block; not persisted. */
+export interface DraftBlockPreview {
+	date: string;
+	startMinute: number;
+	durationMinutes: number;
+	colorIndex: number;
+}
+
 interface RetroState {
 	blocks: TimeBlock[];
 	currentDate: string;
 	nextColorIndex: number;
 	isDraggingBlock: boolean;
+	blockLivePreviews: Record<string, BlockLivePreview>;
+	draftBlockPreview: DraftBlockPreview | null;
 	history: TimeBlock[][];
 	theme: ThemeId;
 	showGridlines: boolean;
@@ -24,6 +40,11 @@ interface RetroState {
 	setTheme: (theme: ThemeId) => void;
 	setShowGridlines: (show: boolean) => void;
 	setDraggingBlock: (dragging: boolean) => void;
+	setBlockLivePreview: (
+		id: string,
+		preview: BlockLivePreview | null,
+	) => void;
+	setDraftBlockPreview: (preview: DraftBlockPreview | null) => void;
 	addBlock: (
 		date: string,
 		startMinute: number,
@@ -51,6 +72,8 @@ export const useStore = create<RetroState>()(
 			currentDate: formatDateToISO(new Date()),
 			nextColorIndex: 0,
 			isDraggingBlock: false,
+			blockLivePreviews: {},
+			draftBlockPreview: null,
 			history: [],
 			theme: "bubblegum",
 			showGridlines: true,
@@ -60,6 +83,23 @@ export const useStore = create<RetroState>()(
 			setShowGridlines: (show) => set({ showGridlines: show }),
 
 			setDraggingBlock: (dragging) => set({ isDraggingBlock: dragging }),
+
+			setBlockLivePreview: (id, preview) =>
+				set((state) => {
+					if (preview === null) {
+						if (!(id in state.blockLivePreviews)) return state;
+						const { [id]: _, ...blockLivePreviews } = state.blockLivePreviews;
+						return { blockLivePreviews };
+					}
+					return {
+						blockLivePreviews: {
+							...state.blockLivePreviews,
+							[id]: preview,
+						},
+					};
+				}),
+
+			setDraftBlockPreview: (preview) => set({ draftBlockPreview: preview }),
 
 			addBlock: (
 				date,
