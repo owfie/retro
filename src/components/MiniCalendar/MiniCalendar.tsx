@@ -17,9 +17,13 @@ import styles from "./MiniCalendar.module.scss";
 const MONTH_WINDOW = 3;
 const PILL_SPRING = { type: "spring", stiffness: 550, damping: 42 } as const;
 
-export function MiniCalendar() {
+interface MiniCalendarProps {
+	/** Called with the picked date; the dock uses it to dismiss the popover. */
+	onSelect: (iso: string) => void;
+}
+
+export function MiniCalendar({ onSelect }: MiniCalendarProps) {
 	const currentDate = useStore((s) => s.currentDate);
-	const setCurrentDate = useStore((s) => s.setCurrentDate);
 	const blocks = useStore((s) => s.blocks);
 
 	const datesWithEntries = useMemo(
@@ -48,12 +52,37 @@ export function MiniCalendar() {
 		});
 	}, [currentDate]);
 
+	const shiftYear = (delta: number) => {
+		const month = addMonths(viewMonth, delta * 12);
+		setViewMonth(month);
+		setWindowStart(addMonths(month, -1));
+	};
+
 	const daysInMonth = getDaysInMonth(viewMonth);
 	// Monday-first grid
 	const leadingBlanks = (getDay(viewMonth) + 6) % 7;
 
 	return (
 		<div className={styles.calendar}>
+			<div className={styles.yearPicker}>
+				<button
+					type="button"
+					className={styles.chevron}
+					aria-label="Previous year"
+					onClick={() => shiftYear(-1)}
+				>
+					<Chevron direction={-1} />
+				</button>
+				<span className={styles.year}>{format(viewMonth, "yyyy")}</span>
+				<button
+					type="button"
+					className={styles.chevron}
+					aria-label="Next year"
+					onClick={() => shiftYear(1)}
+				>
+					<Chevron direction={1} />
+				</button>
+			</div>
 			<div className={styles.monthPicker}>
 				<button
 					type="button"
@@ -115,7 +144,7 @@ export function MiniCalendar() {
 							className={styles.dayCell}
 							data-selected={iso === currentDate}
 							data-has-entries={datesWithEntries.has(iso)}
-							onClick={() => setCurrentDate(iso)}
+							onClick={() => onSelect(iso)}
 						>
 							{day}
 						</button>

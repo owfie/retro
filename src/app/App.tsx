@@ -1,9 +1,11 @@
 import { useEffect } from "react";
-import { DayPaginator, MiniCalendar, SettingsPanel } from "@/components";
+import { DayPaginator, DaySummaryVisualizer, Dock } from "@/components";
 import { useStore } from "@/store";
 import styles from "./App.module.scss";
 
 export function App() {
+	const currentDate = useStore((s) => s.currentDate);
+
 	// Cmd/Ctrl+Z undoes block mutations (inputs keep their native undo)
 	useEffect(() => {
 		const onKeyDown = (e: KeyboardEvent) => {
@@ -27,15 +29,17 @@ export function App() {
 
 	return (
 		<div className={styles.app}>
-			<aside className={styles.sidebar}>
-				<MiniCalendar />
-				<SettingsPanel />
-			</aside>
 			<main className={styles.main}>
 				<div className={styles.dayPane}>
 					<DayPaginator />
 				</div>
 			</main>
+			<footer className={styles.footer}>
+				<div className={styles.summaryRail}>
+					<DaySummaryVisualizer date={currentDate} />
+				</div>
+				<Dock />
+			</footer>
 		</div>
 	);
 }

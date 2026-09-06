@@ -1,2 +1,2 @@
 export { useBlockGesture } from "./useBlockGesture";
-export { useThemePalette } from "./useThemePalette";
+export { useSelectionSwatch, useThemePalette } from "./useThemePalette";

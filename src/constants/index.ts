@@ -22,6 +22,16 @@ export const LIFT_SPRING = { stiffness: 400, damping: 28 } as const;
 export const ENTRANCE_SPRING = { stiffness: 450, damping: 24 } as const;
 /** Collision squish build-up and decay. */
 export const SQUISH_SPRING = { stiffness: 500, damping: 35 } as const;
+/**
+ * Dock chrome resizing. The day strip changes width whenever the selected
+ * pill takes its bolder weight or the window pages, and its neighbours slide
+ * as the centred row re-balances.
+ */
+export const CHROME_LAYOUT_SPRING = {
+	type: "spring",
+	stiffness: 500,
+	damping: 40,
+} as const;
 
 /** How much a block leans toward the pointer between detents (0 = rigid). */
 export const RESIDUAL_LEAN = 0.35;
@@ -47,6 +57,12 @@ export interface Theme {
 }
 
 export const PALETTE_SIZE = 5;
+
+/**
+ * Swatch the chrome borrows for selected pills (today, current month).
+ * A mid-palette entry so the accent reads on every theme.
+ */
+export const SELECTION_SWATCH_INDEX = 2;
 
 function relativeLuminance(hex: string): number {
 	const n = (i: number) => parseInt(hex.slice(i, i + 2), 16) / 255;

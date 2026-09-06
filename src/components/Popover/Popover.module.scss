@@ -1,0 +1,37 @@
+@use "../../styles/tokens" as *;
+
+.anchor {
+	position: relative;
+	flex-shrink: 0;
+	// Lets a stretched dock row size the trigger button inside.
+	display: flex;
+}
+
+// Appearance is the caller's job — the trigger only provides layout, so a
+// dock segment can keep a static ground and hover its inner pill instead.
+.trigger {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	cursor: pointer;
+	user-select: none;
+}
+
+.panel {
+	position: absolute;
+	bottom: calc(100% + 10px);
+	z-index: 20;
+	padding: 10px;
+	border-radius: $radius-panel;
+	background: $surface;
+
+	&[data-align="left"] {
+		left: 0;
+		transform-origin: bottom left;
+	}
+
+	&[data-align="right"] {
+		right: 0;
+		transform-origin: bottom right;
+	}
+}

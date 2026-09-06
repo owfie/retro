@@ -1,8 +1,6 @@
 import { addDays } from "date-fns";
 import { AnimatePresence, motion, useDragControls } from "motion/react";
 import { useRef } from "react";
-import { DayStrip } from "@/components/DayStrip";
-import { DaySummaryVisualizer } from "@/components/DaySummaryVisualizer";
 import { DayView } from "@/components/DayView";
 import { useStore } from "@/store";
 import { formatDateToISO, parseLocalDate } from "@/utils/time";
@@ -23,7 +21,6 @@ const variants = {
 export function DayPaginator() {
 	const currentDate = useStore((s) => s.currentDate);
 	const setCurrentDate = useStore((s) => s.setCurrentDate);
-	const dirRef = useRef(0);
 	// Manual drag: the swipe is only ever started from the empty grid (see
 	// DayView.onSwipeStart), so block/resize/grab pointerdowns can never page
 	// the view. Motion auto-listening would start the pan as the pointerdown
@@ -31,41 +28,23 @@ export function DayPaginator() {
 	// prevents (it attaches native listeners on the wrapper).
 	const dragControls = useDragControls();
 
+	// Page direction is derived from the date itself, so every navigator —
+	// the dock's strip and calendar, the Today pill, a swipe — animates the
+	// right way without having to report which way it moved.
+	const prevDateRef = useRef(currentDate);
+	const dirRef = useRef(0);
+	if (prevDateRef.current !== currentDate) {
+		dirRef.current = currentDate > prevDateRef.current ? 1 : -1;
+		prevDateRef.current = currentDate;
+	}
+
 	const navigate = (delta: number) => {
-		dirRef.current = delta;
 		const newDate = addDays(parseLocalDate(currentDate), delta);
 		setCurrentDate(formatDateToISO(newDate));
 	};
 
-	const goToDate = (iso: string) => {
-		if (iso === currentDate) return;
-		dirRef.current = iso > currentDate ? 1 : -1;
-		setCurrentDate(iso);
-	};
-
-	const today = formatDateToISO(new Date());
-	const isToday = currentDate === today;
-
 	return (
 		<div className={styles.paginator}>
-			<div className={styles.header}>
-				<DayStrip currentDate={currentDate} onSelect={goToDate} />
-				<AnimatePresence>
-					{!isToday && (
-						<motion.button
-							type="button"
-							className={styles.todayButton}
-							initial={{ opacity: 0, scale: 0.9, y: "-50%" }}
-							animate={{ opacity: 1, scale: 1, y: "-50%" }}
-							exit={{ opacity: 0, scale: 0.9, y: "-50%" }}
-							transition={{ duration: 0.15 }}
-							onClick={() => goToDate(today)}
-						>
-							Today
-						</motion.button>
-					)}
-				</AnimatePresence>
-			</div>
 			<div className={styles.viewContainer}>
 				<AnimatePresence mode="popLayout" custom={dirRef.current}>
 					<motion.div
@@ -99,7 +78,6 @@ export function DayPaginator() {
 					</motion.div>
 				</AnimatePresence>
 			</div>
-			<DaySummaryVisualizer date={currentDate} />
 		</div>
 	);
 }
