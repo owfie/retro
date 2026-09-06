@@ -33,6 +33,7 @@ export function SettingsPanel() {
 					</span>
 				</button>
 			))}
+			<div className={styles.divider} />
 			<div className={styles.settingRow}>
 				<span className={styles.rowLabel}>Gridlines</span>
 				<button

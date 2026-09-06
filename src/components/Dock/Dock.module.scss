@@ -1,0 +1,95 @@
+@use "../../styles/tokens" as *;
+
+.dock {
+	display: flex;
+	align-items: stretch;
+	justify-content: center;
+	gap: 14px;
+	padding: 0 16px;
+	user-select: none;
+}
+
+// Every segment is a static ground. Hover lives on the pill *inside* it, so
+// the chrome itself never lights up — same rule as the day strip's pills.
+.stripSegment,
+.monthChip,
+.appearanceChip {
+	display: flex;
+	align-items: center;
+	padding: 10px;
+	border-radius: $radius-segment;
+	background: $surface;
+	flex-shrink: 0;
+}
+
+.stripSegment {
+	min-width: 0;
+}
+
+.monthLabel {
+	padding: 6px 13px;
+	border-radius: $radius-pill;
+	font-size: 14px;
+	font-weight: 500;
+	color: $muted;
+	white-space: nowrap;
+	font-variant-numeric: tabular-nums;
+	transition: background 0.14s, color 0.14s;
+}
+
+.monthChip:hover .monthLabel,
+.monthChip[aria-expanded="true"] .monthLabel {
+	background: $raised;
+	color: $ink-soft;
+}
+
+.swatchStack {
+	display: flex;
+	align-items: center;
+	padding: 8px 11px;
+	border-radius: $radius-pill;
+	transition: background 0.14s;
+}
+
+.swatchDot {
+	width: 11px;
+	height: 11px;
+	border-radius: 50%;
+	margin-left: -3px;
+	box-shadow: 0 0 0 2px $surface;
+	transition: box-shadow 0.14s;
+
+	&:first-child {
+		margin-left: 0;
+	}
+}
+
+.appearanceChip:hover .swatchStack,
+.appearanceChip[aria-expanded="true"] .swatchStack {
+	background: $raised;
+
+	.swatchDot {
+		box-shadow: 0 0 0 2px $raised;
+	}
+}
+
+// ── Panels ───────────────────────────────────────────────────
+
+.calendarPanel {
+	width: 276px;
+}
+
+.settingsPanel {
+	width: 224px;
+}
+
+@media (max-width: 720px) {
+	.dock {
+		gap: 8px;
+		padding: 0 10px;
+	}
+
+	.monthLabel {
+		padding: 6px 10px;
+	}
+}

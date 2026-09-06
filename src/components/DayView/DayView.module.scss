@@ -1,3 +1,5 @@
+@use "../../styles/tokens" as *;
+
 .dayView {
 	height: 100%;
 	overflow-y: auto;
@@ -7,11 +9,35 @@
 	// Safari and causes selection flicker in Chromium.
 	-webkit-user-select: none;
 	user-select: none;
+
+	// Firefox has no thumb pseudo-element, so it gets the colour but not the
+	// inset; the gap there comes from the track width alone.
+	scrollbar-width: thin;
+	scrollbar-color: $surface transparent;
+
+	&::-webkit-scrollbar {
+		width: $scrollbar-width;
+	}
+
+	&::-webkit-scrollbar-track {
+		background: transparent;
+	}
+
+	// A transparent border clipped out of the paint box insets the thumb
+	// without narrowing the track, which is what holds it off the grid.
+	&::-webkit-scrollbar-thumb {
+		background: $surface;
+		background-clip: content-box;
+		border: $scrollbar-inset solid transparent;
+		border-radius: 999px;
+	}
 }
 
 .dayViewInner {
 	position: relative;
 	min-height: 100%;
+	// Holds the whole grid — blocks, gridlines, now line — off the scrollbar.
+	margin-right: $grid-gutter;
 }
 
 .draftBlock {
@@ -46,6 +72,9 @@
 	justify-content: center;
 	pointer-events: none;
 	z-index: 4;
+	// Sits outside .dayViewInner, so it needs the gutter to stay centred on
+	// the grid rather than on the scroll container.
+	margin-right: $grid-gutter;
 }
 
 .emptyHintText {

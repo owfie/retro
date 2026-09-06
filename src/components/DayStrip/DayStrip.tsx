@@ -2,6 +2,7 @@ import { addDays, differenceInCalendarDays, format } from "date-fns";
 import { motion } from "motion/react";
 import { useEffect, useState } from "react";
 import { Chevron } from "@/components/Chevron";
+import { CHROME_LAYOUT_SPRING } from "@/constants";
 import { formatDateToISO, parseLocalDate } from "@/utils/time";
 import styles from "./DayStrip.module.scss";
 
@@ -11,6 +12,8 @@ const PILL_SPRING = { type: "spring", stiffness: 550, damping: 42 } as const;
 interface DayStripProps {
 	currentDate: string;
 	onSelect: (iso: string) => void;
+	/** Surface styling from whichever bar hosts the strip. */
+	className?: string;
 }
 
 /**
@@ -19,7 +22,7 @@ interface DayStripProps {
  * The window only recenters when the selected day leaves it (e.g. via swipe
  * or the mini calendar).
  */
-export function DayStrip({ currentDate, onSelect }: DayStripProps) {
+export function DayStrip({ currentDate, onSelect, className }: DayStripProps) {
 	const [windowStart, setWindowStart] = useState(() =>
 		addDays(parseLocalDate(currentDate), -2),
 	);
@@ -36,22 +39,30 @@ export function DayStrip({ currentDate, onSelect }: DayStripProps) {
 	}, [currentDate]);
 
 	return (
-		<div className={styles.strip}>
-			<button
+		<motion.div
+			layout
+			transition={CHROME_LAYOUT_SPRING}
+			className={`${styles.strip} ${className ?? ""}`}
+		>
+			<motion.button
+				layout="position"
+				transition={CHROME_LAYOUT_SPRING}
 				type="button"
 				className={styles.chevron}
 				aria-label="Previous days"
 				onClick={() => setWindowStart((start) => addDays(start, -WINDOW_SIZE))}
 			>
 				<Chevron direction={-1} />
-			</button>
+			</motion.button>
 			{Array.from({ length: WINDOW_SIZE }, (_, i) => {
 				const day = addDays(windowStart, i);
 				const iso = formatDateToISO(day);
 				const isSelected = iso === currentDate;
 				return (
-					<button
+					<motion.button
 						key={iso}
+						layout="position"
+						transition={CHROME_LAYOUT_SPRING}
 						type="button"
 						className={styles.day}
 						data-selected={isSelected}
@@ -65,17 +76,19 @@ export function DayStrip({ currentDate, onSelect }: DayStripProps) {
 							/>
 						)}
 						<span className={styles.dayText}>{format(day, "EEE d")}</span>
-					</button>
+					</motion.button>
 				);
 			})}
-			<button
+			<motion.button
+				layout="position"
+				transition={CHROME_LAYOUT_SPRING}
 				type="button"
 				className={styles.chevron}
 				aria-label="Next days"
 				onClick={() => setWindowStart((start) => addDays(start, WINDOW_SIZE))}
 			>
 				<Chevron direction={1} />
-			</button>
-		</div>
+			</motion.button>
+		</motion.div>
 	);
 }

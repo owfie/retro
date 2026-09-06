@@ -1,0 +1,28 @@
+// Shared surface + text tokens for the chrome (dock, popovers and the
+// controls inside them). The day grid keeps its own local colours.
+
+$ink: #26221e;
+$ink-soft: #55504a;
+$muted: #a29d95;
+$faint: #c3beb6;
+
+/// Ground for dock segments and popover panels.
+$surface: #f9f9f9;
+$surface-hover: #f1f1f1;
+/// Sits *on* $surface to mark something (active row, day with entries).
+$raised: #ffffff;
+
+$rule: #ececec;
+
+$radius-segment: 18px;
+$radius-panel: 20px;
+$radius-pill: 10px;
+
+/// Track width of the day view's scrollbar. The summary rail below the grid
+/// pads by the same amount so it stays flush with the block column.
+$scrollbar-width: 14px;
+/// Transparent inset either side of the thumb within its track.
+$scrollbar-inset: 4px;
+/// Clear space held between the grid and the scrollbar track. The grid is
+/// narrowed by this; everything positioned against it moves in together.
+$grid-gutter: 22px;

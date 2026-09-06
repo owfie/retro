@@ -1,22 +1,15 @@
+@use "../styles/tokens" as *;
+
 .app {
 	display: flex;
+	flex-direction: column;
 	height: 100%;
 	overflow: hidden;
 }
 
-.sidebar {
-	width: 280px;
-	flex-shrink: 0;
-	display: flex;
-	flex-direction: column;
-	justify-content: space-between;
-	padding: 24px 20px;
-	overflow-y: auto;
-}
-
 .main {
 	flex: 1;
-	min-width: 0;
+	min-height: 0;
 	display: flex;
 	justify-content: center;
 	overflow: hidden;
@@ -28,4 +21,24 @@
 	height: 100%;
 	position: relative;
 	overflow: hidden;
+}
+
+.footer {
+	flex-shrink: 0;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 10px;
+	padding-bottom: 26px;
+}
+
+.summaryRail {
+	width: 100%;
+	max-width: 520px;
+	// The summary hides itself on an empty day; holding its height keeps the
+	// dock from stepping up as the first block lands.
+	min-height: 52px;
+	// The grid above loses this much to its scrollbar and gutter; match it so
+	// the summary segments stay flush with the blocks.
+	padding-right: $scrollbar-width + $grid-gutter;
 }

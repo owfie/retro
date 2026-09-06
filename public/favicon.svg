@@ -1,3 +1,5 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
-  <text y="0.9em" font-size="90">💿</text>
+<svg width="300" height="300" viewBox="0 0 300 300" fill="none" xmlns="http://www.w3.org/2000/svg">
+<path d="M100 300C44.7715 300 5.47759e-06 255.228 1.22345e-05 200V200L300 200V200C300 255.229 255.228 300 200 300L100 300Z" fill="#FB710A"/>
+<rect y="200" width="100" height="300" transform="rotate(-90 0 200)" fill="#B01D55"/>
+<path d="M0 100V100C6.75695e-06 44.7715 44.7715 8.82747e-06 100 1.97167e-05L200 3.94334e-05C255.228 5.03227e-05 300 44.7716 300 100V100L0 100Z" fill="#63095F"/>
 </svg>

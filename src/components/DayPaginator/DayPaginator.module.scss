@@ -5,49 +5,6 @@
 	overflow: hidden;
 }
 
-.header {
-	position: relative;
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	padding: 14px 16px;
-	flex-shrink: 0;
-}
-
-.todayButton {
-	position: absolute;
-	right: 16px;
-	top: 50%;
-	font-size: 12px;
-	font-weight: 600;
-	padding: 3px 10px;
-	border-radius: 999px;
-	border: 1px solid #ddd;
-	color: #666;
-	background: #fff;
-	white-space: nowrap;
-	cursor: pointer;
-
-	&:hover {
-		color: #333;
-		background: rgba(0, 0, 0, 0.04);
-	}
-}
-
-.navButton {
-	font-size: 24px;
-	line-height: 1;
-	padding: 4px 12px;
-	color: #666;
-	border: 1px solid #ddd;
-	border-radius: 4px;
-
-	&:hover {
-		color: #333;
-		background: rgba(0, 0, 0, 0.04);
-	}
-}
-
 .viewContainer {
 	flex: 1;
 	position: relative;

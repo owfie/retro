@@ -1,3 +1,5 @@
+@use "../../styles/tokens" as *;
+
 .strip {
 	display: flex;
 	align-items: center;
@@ -11,48 +13,55 @@
 	justify-content: center;
 	width: 28px;
 	height: 28px;
+	flex-shrink: 0;
 	border-radius: 9px;
-	color: #c3beb6;
+	color: $faint;
 	cursor: pointer;
-	transition: background 0.12s, color 0.12s;
+	transition: background 0.14s, color 0.14s;
 
 	&:hover {
-		background: #f1efec;
-		color: #6f6a63;
+		background: $raised;
+		color: $ink-soft;
 	}
 }
 
 .day {
 	position: relative;
 	padding: 6px 13px;
-	border-radius: 10px;
+	border-radius: $radius-pill;
 	font-size: 14px;
 	font-weight: 500;
-	color: #b3aea6;
+	color: $muted;
 	white-space: nowrap;
 	user-select: none;
 	cursor: pointer;
-	transition: background 0.12s, color 0.15s;
+	transition: background 0.14s, color 0.15s;
 
 	&:not([data-selected="true"]):hover {
-		background: #f1efec;
-		color: #6f6a63;
+		background: $raised;
+		color: $ink-soft;
 	}
 
 	&[data-selected="true"] {
-		color: #fff;
 		font-weight: 600;
+		color: var(--selection-text);
 	}
 }
 
 .pill {
 	position: absolute;
 	inset: 0;
-	border-radius: 10px;
-	background: #26221e;
+	border-radius: $radius-pill;
+	background: var(--selection-bg);
 }
 
 .dayText {
 	position: relative;
 	z-index: 1;
+}
+
+@media (max-width: 720px) {
+	.day {
+		padding: 6px 10px;
+	}
 }

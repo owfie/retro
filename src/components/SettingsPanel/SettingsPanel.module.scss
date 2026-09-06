@@ -1,7 +1,9 @@
+@use "../../styles/tokens" as *;
+
 .panel {
 	display: flex;
 	flex-direction: column;
-	gap: 4px;
+	gap: 1px;
 	user-select: none;
 }
 
@@ -12,26 +14,38 @@
 	justify-content: space-between;
 	gap: 12px;
 	padding: 9px 12px;
-	border-radius: 9px;
+	border-radius: 10px;
 	text-align: left;
 }
 
 .themeRow {
 	cursor: pointer;
-	transition: background 0.12s;
+	transition: background 0.14s;
 
 	&:hover {
-		background: #f5f4f1;
+		background: rgba(255, 255, 255, 0.6);
 	}
 
+	// The active theme lifts onto the panel's raised surface
 	&[data-active="true"] {
-		background: #eef1f6;
+		background: $raised;
+
+		.rowLabel {
+			color: $ink-soft;
+			font-weight: 500;
+		}
 	}
+}
+
+.divider {
+	height: 1px;
+	margin: 6px 12px;
+	background: $rule;
 }
 
 .rowLabel {
 	font-size: 14px;
-	color: #8d8880;
+	color: $muted;
 }
 
 .dots {
@@ -51,13 +65,13 @@
 	width: 34px;
 	height: 20px;
 	border-radius: 999px;
-	background: #e4e2de;
+	background: #e6e6e6;
 	cursor: pointer;
 	transition: background 0.15s;
 	flex-shrink: 0;
 
 	&[data-on="true"] {
-		background: #26221e;
+		background: var(--selection-bg);
 	}
 }
 

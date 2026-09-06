@@ -1,10 +1,29 @@
+@use "../../styles/tokens" as *;
+
 .calendar {
 	user-select: none;
+	padding: 4px 6px 8px;
+}
+
+.yearPicker {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 2px;
+	margin-bottom: 8px;
+}
+
+.year {
+	font-size: 13px;
+	font-weight: 600;
+	color: $ink-soft;
+	font-variant-numeric: tabular-nums;
 }
 
 .monthPicker {
 	display: flex;
 	align-items: center;
+	justify-content: space-between;
 	gap: 2px;
 	margin-bottom: 22px;
 }
@@ -15,14 +34,15 @@
 	justify-content: center;
 	width: 26px;
 	height: 26px;
+	flex-shrink: 0;
 	border-radius: 8px;
-	color: #c3beb6;
+	color: $faint;
 	cursor: pointer;
-	transition: background 0.12s, color 0.12s;
+	transition: background 0.14s, color 0.14s;
 
 	&:hover {
-		background: #f1efec;
-		color: #6f6a63;
+		background: $raised;
+		color: $ink-soft;
 	}
 }
 
@@ -32,18 +52,18 @@
 	border-radius: 9px;
 	font-size: 13px;
 	font-weight: 500;
-	color: #b3aea6;
+	color: $muted;
 	cursor: pointer;
-	transition: background 0.12s, color 0.15s;
+	transition: background 0.14s, color 0.15s;
 
 	&:not([data-selected="true"]):hover {
-		background: #f1efec;
-		color: #6f6a63;
+		background: $raised;
+		color: $ink-soft;
 	}
 
 	&[data-selected="true"] {
-		color: #fff;
 		font-weight: 600;
+		color: var(--selection-text);
 	}
 }
 
@@ -51,7 +71,7 @@
 	position: absolute;
 	inset: 0;
 	border-radius: 9px;
-	background: #26221e;
+	background: var(--selection-bg);
 }
 
 .monthText {
@@ -74,28 +94,29 @@
 	justify-self: center;
 	border-radius: 8px;
 	font-size: 13px;
-	color: #cbc6bf; // days without entries read as faded
+	font-variant-numeric: tabular-nums;
+	color: $faint; // days without entries read as faded
 	cursor: pointer;
-	transition: background 0.12s, color 0.12s;
+	transition: background 0.14s, color 0.14s;
 
+	// A day that already has blocks lifts onto the panel's raised surface
 	&[data-has-entries="true"] {
-		background: #f1efec;
-		color: #8d8478;
+		background: $raised;
+		color: $ink-soft;
 	}
 
 	&:hover {
-		background: #e9e7e3;
-		color: #6f6a63;
+		background: $raised;
+		color: $ink;
 	}
 
 	&[data-selected="true"] {
-		background: #26221e;
-		color: #fff;
+		background: var(--selection-bg);
 		font-weight: 500;
+		color: var(--selection-text);
 
 		&:hover {
-			background: #26221e;
-			color: #fff;
+			background: var(--selection-bg);
 		}
 	}
 }
